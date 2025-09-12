@@ -217,6 +217,10 @@
                 <configuration>
                     <executable>/usr/local/bin/gpg</executable>
                     <keyname>io.github.qwzhang01</keyname>
+                    <gpgArguments>
+                        <arg>--pinentry-mode</arg>
+                        <arg>loopback</arg>
+                    </gpgArguments>
                 </configuration>
                 <executions>
                     <execution>

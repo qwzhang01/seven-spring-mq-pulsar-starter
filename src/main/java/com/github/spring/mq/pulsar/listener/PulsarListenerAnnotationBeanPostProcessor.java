@@ -1,6 +1,7 @@
 package com.github.spring.mq.pulsar.listener;
 
 import com.github.spring.mq.pulsar.annotation.PulsarListener;
+import com.github.spring.mq.pulsar.exception.PulsarClientInitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -135,7 +136,7 @@ public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProces
             PulsarListener annotation = AnnotationUtils.findAnnotation(method, PulsarListener.class);
             if (annotation != null) {
                 // 如果找到注解，处理这个监听器方法
-                processListenerMethod(bean, annotation.businessPath(), method, annotation);
+                processListenerMethod(bean, method, annotation);
             }
         });
 
@@ -160,25 +161,26 @@ public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProces
      * @param annotation @PulsarListener 注解实例，包含配置信息
      * @throws RuntimeException 如果创建或启动容器失败
      */
-    private void processListenerMethod(Object bean, String businessPath, Method method, PulsarListener annotation) {
+    private void processListenerMethod(Object bean, Method method, PulsarListener annotation) {
         try {
             // 通过工厂创建监听器容器
             // 容器会封装 Pulsar Consumer 和消息处理逻辑
-            PulsarListenerContainer container = containerFactory.createContainer(bean, businessPath, method, annotation);
+            PulsarListenerContainer container = containerFactory.createContainer(bean, method, annotation);
+            if (!containers.contains(container)) {
+                // 将容器添加到管理列表，用于后续的生命周期管理
+                containers.add(container);
 
-            // 将容器添加到管理列表，用于后续的生命周期管理
-            containers.add(container);
+                // 启动容器，开始监听指定 topic 的消息
+                container.start();
 
-            // 启动容器，开始监听指定 topic 的消息
-            container.start();
-
-            // 记录成功创建监听器的日志
-            logger.info("Created Pulsar listener for method: {} on topic: {}",
-                    method.getName(), annotation.topic());
+                // 记录成功创建监听器的日志
+                logger.info("Created Pulsar listener for method: {} on topic: {}",
+                        method.getName(), annotation.topic());
+            }
         } catch (Exception e) {
             // 记录错误日志并抛出运行时异常
             logger.error("Failed to create Pulsar listener for method: " + method.getName(), e);
-            throw new RuntimeException("Failed to create Pulsar listener for method: " + method.getName(), e);
+            throw new PulsarClientInitException("Failed to create Pulsar listener for method: " + method.getName(), e);
         }
     }
 

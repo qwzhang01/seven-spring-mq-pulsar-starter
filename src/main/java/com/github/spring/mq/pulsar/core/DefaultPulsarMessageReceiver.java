@@ -39,7 +39,7 @@ public class DefaultPulsarMessageReceiver implements PulsarMessageReceiver {
                     return null;
                 }
 
-                result = pulsarTemplate.deserialize(message.getData(), messageType);
+                result = pulsarTemplate.deserialize(message.getData(), "", messageType);
                 consumer.acknowledge(message);
                 return result;
             }
@@ -75,7 +75,7 @@ public class DefaultPulsarMessageReceiver implements PulsarMessageReceiver {
                                 return null;
                             }
 
-                            result = pulsarTemplate.deserialize(message.getData(), messageType);
+                            result = pulsarTemplate.deserialize(message.getData(), "", messageType);
                             consumer.acknowledge(message);
                             return result;
                         } catch (Exception e) {
@@ -112,7 +112,7 @@ public class DefaultPulsarMessageReceiver implements PulsarMessageReceiver {
                             continue;
                         }
 
-                        result = pulsarTemplate.deserialize(message.getData(), messageType);
+                        result = pulsarTemplate.deserialize(message.getData(), "", messageType);
                         results.add(result);
                         consumer.acknowledge(message);
                     } catch (Exception e) {

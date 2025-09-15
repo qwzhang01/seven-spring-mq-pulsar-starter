@@ -19,6 +19,7 @@
 ### 1. 添加依赖
 
 ```xml
+
 <dependency>
     <groupId>com.github.spring.mq</groupId>
     <artifactId>seven-spring-mq-pulsar-starter</artifactId>
@@ -31,6 +32,7 @@
 在你的 Spring Boot 应用主类上添加 `@EnablePulsar` 注解：
 
 ```java
+
 @SpringBootApplication
 @EnablePulsar
 public class Application {
@@ -79,6 +81,7 @@ spring:
 #### 基础消息发送
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -111,6 +114,7 @@ public class MessageService {
 #### 业务场景示例
 
 ```java
+
 @Service
 public class OrderService {
 
@@ -149,6 +153,7 @@ public class OrderService {
 #### 基础消息监听
 
 ```java
+
 @Component
 public class MessageListener {
 
@@ -184,6 +189,7 @@ public class MessageListener {
 #### 业务场景示例
 
 ```java
+
 @Component
 public class OrderEventListener {
 
@@ -207,7 +213,7 @@ public class OrderEventListener {
     public void processPayment(PaymentRequest request) {
         try {
             PaymentResult result = paymentGateway.process(request);
-            
+
             if (result.isSuccess()) {
                 messageSender.send("payment-events",
                         new PaymentSuccessEvent(request.getOrderId(), result));
@@ -264,6 +270,7 @@ public interface PulsarMessageInterceptor {
 #### 日志拦截器
 
 ```java
+
 @Component
 public class LoggingInterceptor implements PulsarMessageInterceptor {
 
@@ -300,6 +307,7 @@ public class LoggingInterceptor implements PulsarMessageInterceptor {
 #### 消息审计拦截器
 
 ```java
+
 @Component
 public class MessageAuditInterceptor implements PulsarMessageInterceptor {
 
@@ -309,12 +317,12 @@ public class MessageAuditInterceptor implements PulsarMessageInterceptor {
     @Override
     public Object beforeSend(String topic, Object message) {
         auditService.logMessageSent(topic, message);
-        
+
         // 可以修改消息内容
         if (message instanceof AuditableMessage) {
             ((AuditableMessage) message).setAuditInfo(getCurrentUser(), System.currentTimeMillis());
         }
-        
+
         return message;
     }
 
@@ -326,7 +334,7 @@ public class MessageAuditInterceptor implements PulsarMessageInterceptor {
             log.warn("Message from blacklisted topic ignored: {}", topic);
             return false;
         }
-        
+
         auditService.logMessageReceived(message);
         return true;
     }
@@ -341,6 +349,7 @@ public class MessageAuditInterceptor implements PulsarMessageInterceptor {
 #### 性能监控拦截器
 
 ```java
+
 @Component
 public class PerformanceInterceptor implements PulsarMessageInterceptor {
     private final ThreadLocal<Long> startTime = new ThreadLocal<>();
@@ -366,6 +375,7 @@ public class PerformanceInterceptor implements PulsarMessageInterceptor {
 ### 死信队列处理
 
 ```java
+
 @Component
 public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
 
@@ -427,6 +437,7 @@ spring:
 #### 注解方式（推荐）
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -452,6 +463,7 @@ public class MessageService {
 #### 编程式事务
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -483,6 +495,7 @@ public class MessageService {
 #### 手动事务管理
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -537,6 +550,7 @@ String txnId = PulsarTransactionUtils.getCurrentTransactionId();
 ### EnablePulsar 注解选项
 
 ```java
+
 @EnablePulsar(
         enabled = true,                    // 是否启用 Pulsar
         enableTransaction = false,         // 是否启用事务支持
@@ -661,6 +675,7 @@ logging:
 Starter 提供了内置的健康检查功能：
 
 ```java
+
 @Autowired
 private PulsarHealthIndicator healthIndicator;
 
@@ -673,6 +688,7 @@ public void checkHealth() {
 ### 健康检查集成
 
 ```java
+
 @RestController
 @RequestMapping("/health")
 public class HealthController {
@@ -718,6 +734,7 @@ public class BadOrderEvent {
 ### 2. 主题命名
 
 使用有意义的主题名称，建议使用分层结构：
+
 - `app.service.event` - 应用.服务.事件
 - `order.payment.success` - 订单.支付.成功
 - `user.registration.completed` - 用户.注册.完成
@@ -732,6 +749,7 @@ public class BadOrderEvent {
 ### 4. 异常处理
 
 ```java
+
 @PulsarListener(topic = "orders", subscription = "order-processor")
 public void processOrder(Order order) {
     try {
@@ -752,6 +770,7 @@ public void processOrder(Order order) {
 ### 5. 性能优化
 
 ```java
+
 @Service
 public class HighThroughputService {
 

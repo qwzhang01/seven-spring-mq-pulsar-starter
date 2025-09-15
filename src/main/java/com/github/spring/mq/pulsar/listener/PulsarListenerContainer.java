@@ -24,20 +24,33 @@ public class PulsarListenerContainer {
 
     private final Consumer<byte[]> consumer;
     private final Object bean;
+    /**
+     * 映射key 到 method
+     */
     private final ConcurrentHashMap<String, Method> methodMap = new ConcurrentHashMap<>();
+    /**
+     * 映射 businessKey 的字段名字
+     */
     private final ConcurrentHashMap<String, String> businessMap = new ConcurrentHashMap<>();
+    /**
+     * 映射 data 数据 的字段名字
+     */
+    private final ConcurrentHashMap<String, String> dataMap = new ConcurrentHashMap<>();
+
     private final boolean autoAck;
     private final Class<?> messageType;
     private final PulsarTemplate pulsarTemplate;
     private final ExecutorService executor;
     private volatile boolean running = false;
 
-    public PulsarListenerContainer(Consumer<byte[]> consumer, Object bean, String businessPath, Method method, String businessKey,
+    public PulsarListenerContainer(Consumer<byte[]> consumer, Object bean,
+                                   String businessPath, Method method, String businessKey,String dataKey,
                                    boolean autoAck, Class<?> messageType, PulsarTemplate pulsarTemplate) {
         this.consumer = consumer;
         this.bean = bean;
         this.methodMap.put(businessPath, method);
         this.businessMap.put(businessPath, businessKey);
+        this.dataMap.put(businessPath, dataKey);
         this.autoAck = autoAck;
         this.messageType = messageType;
         this.pulsarTemplate = pulsarTemplate;
@@ -107,13 +120,13 @@ public class PulsarListenerContainer {
                 return;
             }
 
-            String business = pulsarTemplate.deserializeBusinessType(message.getData(), businessMap);
+            String business = pulsarTemplate.deserializeBusinessType(message.getData(), businessMap, messageType);
             Method method = this.methodMap.get(business);
             if (method == null) {
-                throw new UnsupportedOperationException("");
+                throw new UnsupportedOperationException(business + "业务类型不支持，没有对应的消费者");
             }
-
-            deserializedMessage = pulsarTemplate.deserialize(message.getData(), messageType);
+            String dataKey = this.dataMap.get(business);
+            deserializedMessage = pulsarTemplate.deserialize(message.getData(), dataKey, messageType);
 
             // 调用监听器方法
             ReflectionUtils.makeAccessible(method);
@@ -151,8 +164,9 @@ public class PulsarListenerContainer {
         }
     }
 
-    public void addMethod(String businessPath, Method method, String businessKey) {
+    public void addMethod(String businessPath, Method method, String businessKey, String dataKey) {
         this.methodMap.put(businessPath, method);
         this.businessMap.put(businessPath, businessKey);
+        this.dataMap.put(businessPath, dataKey);
     }
 }

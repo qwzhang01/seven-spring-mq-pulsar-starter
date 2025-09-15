@@ -125,6 +125,17 @@ public class PulsarProperties {
      */
     public void valid() {
         validProduce();
+        validConsume();
+    }
+
+    private void validConsume() {
+        Consumer consumer = getConsumer();
+        Map<String, Consumer> consumerMap = getConsumerMap();
+        if (consumer != null && consumerMap != null) {
+            if (StringUtils.isNotBlank(consumer.getTopic()) && !consumerMap.isEmpty()) {
+                throw new PulsarConfigUnsupportedException("单消费者与多消费者无法同时配置，请只配置其中一个后再启动");
+            }
+        }
     }
 
     private void validProduce() {
@@ -132,7 +143,7 @@ public class PulsarProperties {
         Map<String, Producer> producerMap = getProducerMap();
         if (producer != null && producerMap != null) {
             if (StringUtils.isNotBlank(producer.getTopic()) && !producerMap.isEmpty()) {
-                throw new PulsarConfigUnsupportedException("但生产者与多生产者无法同时配置，请只配置其中一个后再启动");
+                throw new PulsarConfigUnsupportedException("单生产者与多生产者无法同时配置，请只配置其中一个后再启动");
             }
         }
     }
@@ -261,14 +272,29 @@ public class PulsarProperties {
          */
         private String businessKey = "businessPath";
 
-        private int retryTime = 3;
-
         private String subscriptionName = "default-subscription";
         private String subscriptionType = "Exclusive";
         private String subscriptionInitialPosition = "Latest";
+        private boolean autoAck = true;
+        private int retryTime = 3;
+        /**
+         * 没有Ack的消息，默认30秒后重新消费
+         */
         private Duration ackTimeout = Duration.ofSeconds(30);
+        /**
+         * Sets the size of the consumer receive queue.
+         */
         private int receiverQueueSize = 1000;
+        /**
+         * negativeAck的消息，重新消费延迟时间
+         * 默认1000毫秒
+         */
         private int negativeAckRedeliveryDelay = 1000;
+        /**
+         * 消息重新消费延迟时间
+         */
+        private int timeToReconsumeDelay = 1000;
+
         private boolean autoAckOldestChunkedMessageOnQueueFull = false;
 
         public String getTopic() {
@@ -277,6 +303,14 @@ public class PulsarProperties {
 
         public void setTopic(String topic) {
             this.topic = topic;
+        }
+
+        public boolean isAutoAck() {
+            return autoAck;
+        }
+
+        public void setAutoAck(boolean autoAck) {
+            this.autoAck = autoAck;
         }
 
         public String getRetryTopic() {
@@ -293,6 +327,14 @@ public class PulsarProperties {
 
         public void setBusinessKey(String businessKey) {
             this.businessKey = businessKey;
+        }
+
+        public int getTimeToReconsumeDelay() {
+            return timeToReconsumeDelay;
+        }
+
+        public void setTimeToReconsumeDelay(int timeToReconsumeDelay) {
+            this.timeToReconsumeDelay = timeToReconsumeDelay;
         }
 
         public String getDeadTopic() {

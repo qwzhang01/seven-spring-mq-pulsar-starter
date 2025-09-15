@@ -45,8 +45,8 @@ import java.util.concurrent.TimeUnit;
 public class PulsarAutoConfiguration {
 
     private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private final Log log = LogFactory.getLog(PulsarAutoConfiguration.class);
     private final PulsarProperties pulsarProperties;
-    Log log = LogFactory.getLog(PulsarAutoConfiguration.class);
 
     public PulsarAutoConfiguration(PulsarProperties pulsarProperties) {
         this.pulsarProperties = pulsarProperties;

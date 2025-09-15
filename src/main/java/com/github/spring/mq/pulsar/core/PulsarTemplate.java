@@ -1,5 +1,6 @@
 package com.github.spring.mq.pulsar.core;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.config.PulsarInterceptorConfiguration;
@@ -9,6 +10,7 @@ import com.github.spring.mq.pulsar.exception.PulsarConsumeInitException;
 import com.github.spring.mq.pulsar.exception.PulsarConsumerNotExistException;
 import com.github.spring.mq.pulsar.exception.PulsarProducerInitException;
 import com.github.spring.mq.pulsar.interceptor.PulsarMessageInterceptor;
+import org.apache.logging.log4j.Logger;
 import org.apache.pulsar.client.api.*;
 import org.springframework.util.StringUtils;
 
@@ -24,6 +26,8 @@ import java.util.concurrent.TimeUnit;
  * @author avinzhang
  */
 public final class PulsarTemplate {
+
+    private final Logger logger = org.apache.logging.log4j.LogManager.getLogger(PulsarTemplate.class);
 
     private final PulsarClient pulsarClient;
     private final PulsarProperties pulsarProperties;
@@ -125,7 +129,7 @@ public final class PulsarTemplate {
         }
     }
 
-    public Consumer<byte[]> getOrCreateConsumer(String consumerNameAnno, String subscription, String subscriptionType,
+    public Consumer<byte[]> getOrCreateConsumer(String consumerNameAnno,
                                                 PulsarProperties.Consumer consumer) {
 
         return consumerCache.computeIfAbsent(consumer.getTopic(), t -> {
@@ -135,16 +139,16 @@ public final class PulsarTemplate {
             try {
                 ConsumerBuilder<byte[]> consumerBuilder = pulsarClient.newConsumer()
                         .topic("persistent://" + consumer.getTopic())
-                        .subscriptionType(SubscriptionType.valueOf(StringUtils.hasText(subscriptionType) ? subscriptionType : consumer.getSubscriptionType()))
-                        .subscriptionName(StringUtils.hasText(subscription)
-                                ? subscription
+                        .subscriptionType(SubscriptionType.valueOf(consumer.getSubscriptionType()))
+                        .subscriptionName(StringUtils.hasText(consumer.getSubscriptionName())
+                                ? consumer.getSubscriptionName()
                                 : pulsarProperties.getConsumer().getSubscriptionName())
                         .subscriptionInitialPosition(SubscriptionInitialPosition.valueOf(consumer.getSubscriptionInitialPosition()))
                         .consumerName(consumerName)
-                        .ackTimeout(pulsarProperties.getConsumer().getAckTimeout().toMillis(), TimeUnit.MILLISECONDS)
-                        .receiverQueueSize(pulsarProperties.getConsumer().getReceiverQueueSize())
+                        .ackTimeout(consumer.getAckTimeout().toMillis(), TimeUnit.MILLISECONDS)
+                        .receiverQueueSize(consumer.getReceiverQueueSize())
                         .negativeAckRedeliveryDelay(consumer.getNegativeAckRedeliveryDelay(), TimeUnit.MILLISECONDS)
-                        .autoAckOldestChunkedMessageOnQueueFull(pulsarProperties.getConsumer().isAutoAckOldestChunkedMessageOnQueueFull());
+                        .autoAckOldestChunkedMessageOnQueueFull(consumer.isAutoAckOldestChunkedMessageOnQueueFull());
 
                 if (StringUtils.hasText(consumer.getRetryTopic())
                         || StringUtils.hasText(consumer.getDeadTopic())) {
@@ -251,14 +255,18 @@ public final class PulsarTemplate {
     /**
      * 反序列化对象
      */
-    public <T> T deserialize(byte[] data, Class<T> clazz) {
+    public <T> T deserialize(byte[] data, String dataKey, Class<T> clazz) {
         try {
             if (clazz == String.class) {
                 return clazz.cast(new String(data));
             } else if (clazz == byte[].class) {
                 return clazz.cast(data);
             } else {
-                return objectMapper.readValue(data, clazz);
+                if (!StringUtils.hasText(dataKey)) {
+                    return objectMapper.readValue(data, clazz);
+                }
+                JsonNode node = objectMapper.readTree(data);
+                return objectMapper.treeToValue(node.get(dataKey), clazz);
             }
         } catch (Exception e) {
             throw new JacksonException("Failed to deserialize object", e);
@@ -272,23 +280,35 @@ public final class PulsarTemplate {
      * @param businessMap
      * @return
      */
-    public String deserializeBusinessType(byte[] data, Map<String, String> businessMap) {
+    public String deserializeBusinessType(byte[] data, Map<String, String> businessMap, Class<?> clazz) {
         if (businessMap.size() == 1) {
             return businessMap.keySet().iterator().next();
         }
         try {
+            if (clazz == byte[].class) {
+                return "";
+            }
+
             JsonNode jsonNode = objectMapper.readTree(new String(data));
             for (Map.Entry<String, String> entry : businessMap.entrySet()) {
                 JsonNode node = jsonNode.get(entry.getValue());
+                if (node == null) {
+                    continue;
+                }
                 if (node.isTextual()) {
                     if (node.asText().equals(entry.getKey())) {
                         return entry.getKey();
                     }
                 }
             }
-            throw new PulsarConsumerNotExistException("没有匹配的消费者");
+            return "";
+        } catch (JsonProcessingException e) {
+            if (clazz == String.class) {
+                return "";
+            }
+            throw new PulsarConsumerNotExistException("explain handler mapping exception", e);
         } catch (Exception e) {
-            throw new PulsarConsumerNotExistException("没有匹配的消费者", e);
+            throw new PulsarConsumerNotExistException("explain handler mapping exception", e);
         }
     }
 
@@ -309,7 +329,7 @@ public final class PulsarTemplate {
                 }
             } catch (Exception e) {
                 // 拦截器异常不应该影响消息发送，记录日志即可
-                System.err.println("Error in beforeSend interceptor: " + e.getMessage());
+                logger.error("Error in beforeSend interceptor: " + e.getMessage(), e);
             }
         }
         return currentMessage;
@@ -328,7 +348,7 @@ public final class PulsarTemplate {
                 interceptor.afterSend(topic, message, messageId, exception);
             } catch (Exception e) {
                 // 拦截器异常不应该影响主流程，记录日志即可
-                System.err.println("Error in afterSend interceptor: " + e.getMessage());
+                logger.error("Error in afterSend interceptor: " + e.getMessage(), e);
             }
         }
     }
@@ -348,7 +368,7 @@ public final class PulsarTemplate {
                 }
             } catch (Exception e) {
                 // 拦截器异常不应该影响消息接收，记录日志即可
-                System.err.println("Error in beforeReceive interceptor: " + e.getMessage());
+                logger.error("Error in beforeReceive interceptor: " + e.getMessage(), e);
             }
         }
         return true;
@@ -367,7 +387,7 @@ public final class PulsarTemplate {
                 interceptor.afterReceive(message, processedMessage, exception);
             } catch (Exception e) {
                 // 拦截器异常不应该影响主流程，记录日志即可
-                System.err.println("Error in afterReceive interceptor: " + e.getMessage());
+                logger.error("Error in afterReceive interceptor: " + e.getMessage(), e);
             }
         }
     }

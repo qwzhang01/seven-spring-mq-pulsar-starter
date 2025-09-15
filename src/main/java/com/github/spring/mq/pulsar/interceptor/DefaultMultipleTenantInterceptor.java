@@ -28,25 +28,33 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
 
     @Override
     public Object beforeSend(String topic, Object message) {
-        MsgDomain<Object> domain = new MsgDomain<>();
-        domain.setCorpKey(MsgContext.getCorpKey());
-        domain.setAppName(MsgContext.getAppName());
-        domain.setRequestId(MsgContext.getRequestId());
-        domain.setMsgId(UUID.randomUUID().toString().replaceAll("-", "").toLowerCase(Locale.ROOT));
-        domain.setTime(MsgContext.getTime());
-        domain.setData(message);
-        domain.setBusinessPath(MsgContext.getBusinessPath());
-        return domain;
+        buildContext();
+        try {
+            MsgDomain<Object> domain = new MsgDomain<>();
+            domain.setCorpKey(MsgContext.getCorpKey());
+            domain.setAppName(MsgContext.getAppName());
+            domain.setRequestId(MsgContext.getRequestId());
+            domain.setMsgId(UUID.randomUUID().toString().replaceAll("-", "").toLowerCase(Locale.ROOT));
+            domain.setTime(MsgContext.getTime());
+            domain.setData(message);
+            domain.setBusinessPath(MsgContext.getBusinessPath());
+            return domain;
+        } finally {
+            MsgContext.remove();
+        }
     }
+
 
     @Override
     public void afterSend(String topic, Object message, MessageId messageId, Throwable exception) {
-        MsgDomain<?> domain = pulsarTemplate.deserialize(message, MsgDomain.class);
-        handleMultiTenant(domain.getCorpKey());
+        // ignore
     }
 
     @Override
-    public abstract boolean beforeReceive(Message<?> message);
+    public boolean beforeReceive(Message<?> message) {
+        MsgDomain<?> domain = pulsarTemplate.deserialize(message, MsgDomain.class);
+        return handleMultiTenant(domain.getCorpKey());
+    }
 
     @Override
     public void afterReceive(Message<?> message, Object processedMessage, Exception exception) {
@@ -60,9 +68,14 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
     }
 
     /**
-     * 处理多租户逻辑
+     * 构建请求上下文
+     */
+    public abstract void buildContext();
+
+    /**
+     * 多租户 接受消息后，处理多租户切换 key
      *
      * @param corpKey
      */
-    public abstract void handleMultiTenant(String corpKey);
+    public abstract boolean handleMultiTenant(String corpKey);
 }

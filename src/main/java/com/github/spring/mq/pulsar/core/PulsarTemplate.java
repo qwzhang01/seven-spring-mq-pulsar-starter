@@ -272,6 +272,22 @@ public final class PulsarTemplate {
             throw new JacksonException("Failed to deserialize object", e);
         }
     }
+    /**
+     * 反序列化对象
+     */
+    public <T> T deserialize(Object data,  Class<T> clazz) {
+        try {
+            if (clazz == String.class) {
+                return clazz.cast(data);
+            } else if (clazz == byte[].class) {
+                return clazz.cast(data);
+            } else {
+                return objectMapper.treeToValue(objectMapper.readTree(objectMapper.writeValueAsString(data)), clazz);
+            }
+        } catch (Exception e) {
+            throw new JacksonException("Failed to deserialize object", e);
+        }
+    }
 
     /**
      * 获取消息的消费处理器

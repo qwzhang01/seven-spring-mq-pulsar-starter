@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -23,18 +24,20 @@ public class PulsarListenerContainer {
 
     private final Consumer<byte[]> consumer;
     private final Object bean;
-    private final Method method;
+    private final ConcurrentHashMap<String, Method> methodMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> businessMap = new ConcurrentHashMap<>();
     private final boolean autoAck;
     private final Class<?> messageType;
     private final PulsarTemplate pulsarTemplate;
     private final ExecutorService executor;
     private volatile boolean running = false;
 
-    public PulsarListenerContainer(Consumer<byte[]> consumer, Object bean, Method method,
+    public PulsarListenerContainer(Consumer<byte[]> consumer, Object bean, String businessPath, Method method, String businessKey,
                                    boolean autoAck, Class<?> messageType, PulsarTemplate pulsarTemplate) {
         this.consumer = consumer;
         this.bean = bean;
-        this.method = method;
+        this.methodMap.put(businessPath, method);
+        this.businessMap.put(businessPath, businessKey);
         this.autoAck = autoAck;
         this.messageType = messageType;
         this.pulsarTemplate = pulsarTemplate;
@@ -54,7 +57,7 @@ public class PulsarListenerContainer {
         }
         running = true;
         executor.submit(this::listen);
-        logger.info("Started Pulsar listener for method: {}", method.getName());
+        logger.info("Started Pulsar listener for method: {}", methodMap.keySet());
     }
 
     /**
@@ -68,7 +71,7 @@ public class PulsarListenerContainer {
         } catch (PulsarClientException e) {
             logger.error("Error closing consumer", e);
         }
-        logger.info("Stopped Pulsar listener for method: {}", method.getName());
+        logger.info("Stopped Pulsar listener for method: {}", methodMap.keySet());
     }
 
     /**
@@ -102,6 +105,12 @@ public class PulsarListenerContainer {
                     consumer.acknowledge(message);
                 }
                 return;
+            }
+
+            String business = pulsarTemplate.deserializeBusinessType(message.getData(), businessMap);
+            Method method = this.methodMap.get(business);
+            if (method == null) {
+                throw new UnsupportedOperationException("");
             }
 
             deserializedMessage = pulsarTemplate.deserialize(message.getData(), messageType);
@@ -140,5 +149,10 @@ public class PulsarListenerContainer {
             // 执行接收后拦截器
             pulsarTemplate.applyAfterReceiveInterceptors(message, deserializedMessage, processException);
         }
+    }
+
+    public void addMethod(String businessPath, Method method, String businessKey) {
+        this.methodMap.put(businessPath, method);
+        this.businessMap.put(businessPath, businessKey);
     }
 }

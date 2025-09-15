@@ -26,6 +26,11 @@ public @interface PulsarListener {
      */
     String businessPath() default "";
 
+    /**
+     * 指定消息体中的业务路径字段
+     */
+    String businessKey() default "businessPath";
+
     String retryTopic() default "";
 
     String deadTopic() default "";

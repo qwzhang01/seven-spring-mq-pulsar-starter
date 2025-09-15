@@ -7,16 +7,18 @@
 ## 核心组件
 
 ### 1. 拦截器接口
+
 - **文件**: `PulsarMessageInterceptor.java`
 - **功能**: 定义了拦截器的核心方法
 - **方法**:
-  - `beforeSend()`: 发送前拦截
-  - `afterSend()`: 发送后拦截
-  - `beforeReceive()`: 接收前拦截
-  - `afterReceive()`: 接收后拦截
-  - `getOrder()`: 优先级控制
+    - `beforeSend()`: 发送前拦截
+    - `afterSend()`: 发送后拦截
+    - `beforeReceive()`: 接收前拦截
+    - `afterReceive()`: 接收后拦截
+    - `getOrder()`: 优先级控制
 
 ### 2. 拦截器注册表
+
 - **文件**: `PulsarInterceptorConfiguration.java`
 - **功能**: 管理所有拦截器实例，按优先级排序
 - **特性**: 自动收集Spring容器中的所有拦截器实现
@@ -24,29 +26,34 @@
 ### 3. 核心集成点
 
 #### PulsarTemplate (消息发送拦截)
-- **修改内容**: 
-  - 在`send()`和`sendAsync()`方法中集成拦截器调用
-  - 添加`applyBeforeSendInterceptors()`方法
-  - 添加`applyAfterSendInterceptors()`方法
-  - 添加接收拦截器方法供其他组件调用
+
+- **修改内容**:
+    - 在`send()`和`sendAsync()`方法中集成拦截器调用
+    - 添加`applyBeforeSendInterceptors()`方法
+    - 添加`applyAfterSendInterceptors()`方法
+    - 添加接收拦截器方法供其他组件调用
 
 #### PulsarListenerContainer (消息接收拦截)
+
 - **修改内容**:
-  - 在`processMessage()`方法中集成拦截器调用
-  - 支持消息过滤和异常处理
+    - 在`processMessage()`方法中集成拦截器调用
+    - 支持消息过滤和异常处理
 
 #### DefaultPulsarMessageReceiver (手动接收拦截)
+
 - **修改内容**:
-  - 在`receive()`、`receiveAsync()`、`receiveBatch()`方法中集成拦截器
-  - 确保所有接收方式都支持拦截器
+    - 在`receive()`、`receiveAsync()`、`receiveBatch()`方法中集成拦截器
+    - 确保所有接收方式都支持拦截器
 
 #### 配置类集成
+
 - **PulsarAutoConfiguration**: 确保拦截器注册表正确注入到PulsarTemplate
 - **PulsarListenerContainerFactory**: 传递PulsarTemplate实例给监听器容器
 
 ## 拦截器执行流程
 
 ### 发送消息流程
+
 ```
 用户调用发送方法
     ↓
@@ -60,6 +67,7 @@
 ```
 
 ### 接收消息流程
+
 ```
 从Pulsar接收到消息
     ↓
@@ -75,27 +83,33 @@
 ## 关键特性
 
 ### 1. 优先级控制
+
 - 通过`getOrder()`方法控制拦截器执行顺序
 - 数值越小优先级越高
 - 支持多个拦截器链式执行
 
 ### 2. 消息过滤
+
 - `beforeSend()`返回`null`可阻止消息发送
 - `beforeReceive()`返回`false`可跳过消息处理
 
 ### 3. 异常处理
+
 - 拦截器异常不会影响主流程
 - 异常会被记录到日志中
 - 确保系统稳定性
 
 ### 4. 线程安全
+
 - 拦截器实例在多线程环境下共享
 - 使用ThreadLocal处理线程相关数据
 
 ## 使用示例
 
 ### 1. 基础拦截器实现
+
 ```java
+
 @Component
 public class MyInterceptor implements PulsarMessageInterceptor {
     @Override
@@ -103,12 +117,12 @@ public class MyInterceptor implements PulsarMessageInterceptor {
         // 发送前处理
         return message;
     }
-    
+
     @Override
     public void afterSend(String topic, Object message, MessageId messageId, Exception exception) {
         // 发送后处理
     }
-    
+
     @Override
     public int getOrder() {
         return 100;
@@ -117,14 +131,16 @@ public class MyInterceptor implements PulsarMessageInterceptor {
 ```
 
 ### 2. 配置多个拦截器
+
 ```java
+
 @Configuration
 public class InterceptorConfig {
     @Bean
     public PulsarMessageInterceptor loggingInterceptor() {
         return new LoggingPulsarMessageInterceptor();
     }
-    
+
     @Bean
     public PulsarMessageInterceptor validationInterceptor() {
         return new ValidationPulsarMessageInterceptor();
@@ -135,10 +151,12 @@ public class InterceptorConfig {
 ## 扩展功能
 
 ### 1. 示例拦截器
+
 - **LoggingPulsarMessageInterceptor**: 日志记录拦截器
 - **InterceptorUsageExample**: 完整的使用示例，包含验证、性能监控等
 
 ### 2. 常见使用场景
+
 - 消息日志记录
 - 消息验证和过滤
 - 性能监控

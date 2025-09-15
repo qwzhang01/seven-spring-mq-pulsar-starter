@@ -256,11 +256,19 @@ public class PulsarProperties {
         private String topic;
         private String retryTopic;
         private String deadTopic;
+        /**
+         * 同一个消息，不同业务区分使用的字段
+         */
+        private String businessKey = "businessPath";
+
+        private int retryTime = 3;
 
         private String subscriptionName = "default-subscription";
         private String subscriptionType = "Exclusive";
+        private String subscriptionInitialPosition = "Latest";
         private Duration ackTimeout = Duration.ofSeconds(30);
         private int receiverQueueSize = 1000;
+        private int negativeAckRedeliveryDelay = 1000;
         private boolean autoAckOldestChunkedMessageOnQueueFull = false;
 
         public String getTopic() {
@@ -279,12 +287,20 @@ public class PulsarProperties {
             this.retryTopic = retryTopic;
         }
 
-        public void setDeadTopic(String deadTopic) {
-            this.deadTopic = deadTopic;
+        public String getBusinessKey() {
+            return businessKey;
+        }
+
+        public void setBusinessKey(String businessKey) {
+            this.businessKey = businessKey;
         }
 
         public String getDeadTopic() {
             return deadTopic;
+        }
+
+        public void setDeadTopic(String deadTopic) {
+            this.deadTopic = deadTopic;
         }
 
         public String getSubscriptionName() {
@@ -301,6 +317,30 @@ public class PulsarProperties {
 
         public void setSubscriptionType(String subscriptionType) {
             this.subscriptionType = subscriptionType;
+        }
+
+        public int getRetryTime() {
+            return retryTime;
+        }
+
+        public void setRetryTime(int retryTime) {
+            this.retryTime = retryTime;
+        }
+
+        public String getSubscriptionInitialPosition() {
+            return subscriptionInitialPosition;
+        }
+
+        public void setSubscriptionInitialPosition(String subscriptionInitialPosition) {
+            this.subscriptionInitialPosition = subscriptionInitialPosition;
+        }
+
+        public int getNegativeAckRedeliveryDelay() {
+            return negativeAckRedeliveryDelay;
+        }
+
+        public void setNegativeAckRedeliveryDelay(int negativeAckRedeliveryDelay) {
+            this.negativeAckRedeliveryDelay = negativeAckRedeliveryDelay;
         }
 
         public Duration getAckTimeout() {

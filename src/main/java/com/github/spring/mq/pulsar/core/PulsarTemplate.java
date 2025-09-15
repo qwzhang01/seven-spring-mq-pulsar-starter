@@ -1,14 +1,19 @@
 package com.github.spring.mq.pulsar.core;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.config.PulsarInterceptorConfiguration;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
 import com.github.spring.mq.pulsar.exception.JacksonException;
+import com.github.spring.mq.pulsar.exception.PulsarConsumeInitException;
+import com.github.spring.mq.pulsar.exception.PulsarConsumerNotExistException;
 import com.github.spring.mq.pulsar.exception.PulsarProducerInitException;
 import com.github.spring.mq.pulsar.interceptor.PulsarMessageInterceptor;
 import org.apache.pulsar.client.api.*;
 import org.springframework.util.StringUtils;
 
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -24,12 +29,14 @@ public final class PulsarTemplate {
     private final PulsarProperties pulsarProperties;
     private final ObjectMapper objectMapper;
     private final ConcurrentHashMap<String, Producer<byte[]>> producerCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Consumer<byte[]>> consumerCache = new ConcurrentHashMap<>();
+
     private PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry;
 
-    public PulsarTemplate(PulsarClient pulsarClient, PulsarProperties pulsarProperties) {
+    public PulsarTemplate(PulsarClient pulsarClient, PulsarProperties pulsarProperties, ObjectMapper objectMapper) {
         this.pulsarClient = pulsarClient;
         this.pulsarProperties = pulsarProperties;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     public void setInterceptorRegistry(PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry) {
@@ -118,18 +125,89 @@ public final class PulsarTemplate {
         }
     }
 
+    public Consumer<byte[]> getOrCreateConsumer(String consumerNameAnno, String subscription, String subscriptionType,
+                                                PulsarProperties.Consumer consumer) {
+
+        return consumerCache.computeIfAbsent(consumer.getTopic(), t -> {
+            String consumerName = StringUtils.hasText(consumerNameAnno) ? consumerNameAnno :
+                    UUID.randomUUID().toString().replace("-", "").toLowerCase();
+
+            try {
+                ConsumerBuilder<byte[]> consumerBuilder = pulsarClient.newConsumer()
+                        .topic("persistent://" + consumer.getTopic())
+                        .subscriptionType(SubscriptionType.valueOf(StringUtils.hasText(subscriptionType) ? subscriptionType : consumer.getSubscriptionType()))
+                        .subscriptionName(StringUtils.hasText(subscription)
+                                ? subscription
+                                : pulsarProperties.getConsumer().getSubscriptionName())
+                        .subscriptionInitialPosition(SubscriptionInitialPosition.valueOf(consumer.getSubscriptionInitialPosition()))
+                        .consumerName(consumerName)
+                        .ackTimeout(pulsarProperties.getConsumer().getAckTimeout().toMillis(), TimeUnit.MILLISECONDS)
+                        .receiverQueueSize(pulsarProperties.getConsumer().getReceiverQueueSize())
+                        .negativeAckRedeliveryDelay(consumer.getNegativeAckRedeliveryDelay(), TimeUnit.MILLISECONDS)
+                        .autoAckOldestChunkedMessageOnQueueFull(pulsarProperties.getConsumer().isAutoAckOldestChunkedMessageOnQueueFull());
+
+                if (StringUtils.hasText(consumer.getRetryTopic())
+                        || StringUtils.hasText(consumer.getDeadTopic())) {
+                    DeadLetterPolicy.DeadLetterPolicyBuilder deadLetterPolicyBuilder = DeadLetterPolicy.builder();
+                    if (org.apache.commons.lang3.StringUtils.isNotBlank(consumer.getRetryTopic())) {
+                        deadLetterPolicyBuilder
+                                // 可以指定最大重试次数，最大重试三次后，进入到死信队列
+                                .maxRedeliverCount(consumer.getRetryTime())
+                                // 指定重试队列
+                                .retryLetterTopic(consumer.getRetryTopic());
+
+                        consumerBuilder// 开启重试策略
+                                .enableRetry(true);
+                    }
+                    if (org.apache.commons.lang3.StringUtils.isNotBlank(consumer.getDeadTopic())) {
+                        // 指定死信队列
+                        deadLetterPolicyBuilder.deadLetterTopic(consumer.getDeadTopic());
+                    }
+                    consumerBuilder.deadLetterPolicy(deadLetterPolicyBuilder.build());
+                }
+
+                return consumerBuilder.subscribe();
+            } catch (PulsarClientException e) {
+                throw new PulsarConsumeInitException("Failed to create consumer for topic: " + consumer.getTopic(), e);
+            }
+        });
+    }
+
     /**
      * 创建消费者
      */
     public Consumer<byte[]> createConsumer(String topic, String subscriptionName) throws PulsarClientException {
-        return pulsarClient.newConsumer()
-                .topic(topic)
-                .subscriptionName(subscriptionName)
+        ConsumerBuilder<byte[]> consumerBuilder = pulsarClient.newConsumer()
+                .topic("persistent://" + topic)
                 .subscriptionType(SubscriptionType.valueOf(pulsarProperties.getConsumer().getSubscriptionType()))
+                .subscriptionName(subscriptionName)
+                .subscriptionInitialPosition(SubscriptionInitialPosition.valueOf(pulsarProperties.getConsumer().getSubscriptionInitialPosition()))
                 .ackTimeout(pulsarProperties.getConsumer().getAckTimeout().toMillis(), TimeUnit.MILLISECONDS)
                 .receiverQueueSize(pulsarProperties.getConsumer().getReceiverQueueSize())
-                .autoAckOldestChunkedMessageOnQueueFull(pulsarProperties.getConsumer().isAutoAckOldestChunkedMessageOnQueueFull())
-                .subscribe();
+                .negativeAckRedeliveryDelay(pulsarProperties.getConsumer().getNegativeAckRedeliveryDelay(), TimeUnit.MILLISECONDS)
+                .autoAckOldestChunkedMessageOnQueueFull(pulsarProperties.getConsumer().isAutoAckOldestChunkedMessageOnQueueFull());
+
+        if (StringUtils.hasText(pulsarProperties.getConsumer().getRetryTopic())
+                || StringUtils.hasText(pulsarProperties.getConsumer().getDeadTopic())) {
+            DeadLetterPolicy.DeadLetterPolicyBuilder deadLetterPolicyBuilder = DeadLetterPolicy.builder();
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(pulsarProperties.getConsumer().getRetryTopic())) {
+                deadLetterPolicyBuilder
+                        // 可以指定最大重试次数，最大重试三次后，进入到死信队列
+                        .maxRedeliverCount(pulsarProperties.getConsumer().getRetryTime())
+                        // 指定重试队列
+                        .retryLetterTopic(pulsarProperties.getConsumer().getRetryTopic());
+
+                consumerBuilder// 开启重试策略
+                        .enableRetry(true);
+            }
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(pulsarProperties.getConsumer().getDeadTopic())) {
+                // 指定死信队列
+                deadLetterPolicyBuilder.deadLetterTopic(pulsarProperties.getConsumer().getDeadTopic());
+            }
+            consumerBuilder.deadLetterPolicy(deadLetterPolicyBuilder.build());
+        }
+
+        return consumerBuilder.subscribe();
     }
 
     /**
@@ -184,6 +262,33 @@ public final class PulsarTemplate {
             }
         } catch (Exception e) {
             throw new JacksonException("Failed to deserialize object", e);
+        }
+    }
+
+    /**
+     * 获取消息的消费处理器
+     *
+     * @param data
+     * @param businessMap
+     * @return
+     */
+    public String deserializeBusinessType(byte[] data, Map<String, String> businessMap) {
+        if (businessMap.size() == 1) {
+            return businessMap.keySet().iterator().next();
+        }
+        try {
+            JsonNode jsonNode = objectMapper.readTree(new String(data));
+            for (Map.Entry<String, String> entry : businessMap.entrySet()) {
+                JsonNode node = jsonNode.get(entry.getValue());
+                if (node.isTextual()) {
+                    if (node.asText().equals(entry.getKey())) {
+                        return entry.getKey();
+                    }
+                }
+            }
+            throw new PulsarConsumerNotExistException("没有匹配的消费者");
+        } catch (Exception e) {
+            throw new PulsarConsumerNotExistException("没有匹配的消费者", e);
         }
     }
 

@@ -19,10 +19,11 @@
 ### 1. 添加依赖
 
 ```xml
+
 <dependency>
     <groupId>com.github.spring.mq</groupId>
     <artifactId>seven-spring-mq-pulsar-starter</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -31,6 +32,7 @@
 在你的 Spring Boot 应用主类上添加 `@EnablePulsar` 注解：
 
 ```java
+
 @SpringBootApplication
 @EnablePulsar
 public class Application {
@@ -77,28 +79,29 @@ spring:
 ### 发送消息
 
 ```java
+
 @Service
 public class MessageService {
-    
+
     @Autowired
     private PulsarMessageSender messageSender;
-    
+
     // 发送简单消息
     public void sendMessage(String message) {
         MessageId messageId = messageSender.send("my-topic", message);
         System.out.println("Message sent: " + messageId);
     }
-    
+
     // 异步发送消息
     public CompletableFuture<MessageId> sendAsyncMessage(String message) {
         return messageSender.sendAsync("my-topic", message);
     }
-    
+
     // 发送带键的消息
     public void sendKeyedMessage(String key, Object message) {
         messageSender.send("my-topic", key, message);
     }
-    
+
     // 发送延迟消息
     public void sendDelayedMessage(String message, long delayMillis) {
         messageSender.sendDelayed("my-topic", message, delayMillis);
@@ -109,30 +112,31 @@ public class MessageService {
 ### 接收消息
 
 ```java
+
 @Component
 public class MessageListener {
-    
+
     // 简单消息监听
     @PulsarListener(topic = "my-topic", subscription = "my-subscription")
     public void handleMessage(String message) {
         System.out.println("Received: " + message);
     }
-    
+
     // 监听复杂对象
     @PulsarListener(
-        topic = "user-events", 
-        subscription = "user-service",
-        messageType = UserEvent.class
+            topic = "user-events",
+            subscription = "user-service",
+            messageType = UserEvent.class
     )
     public void handleUserEvent(UserEvent event) {
         System.out.println("User event: " + event);
     }
-    
+
     // 共享订阅模式
     @PulsarListener(
-        topic = "shared-topic", 
-        subscription = "shared-subscription",
-        subscriptionType = "Shared"
+            topic = "shared-topic",
+            subscription = "shared-subscription",
+            subscriptionType = "Shared"
     )
     public void handleSharedMessage(String message) {
         // 多个消费者实例可以并行处理消息
@@ -144,17 +148,18 @@ public class MessageListener {
 ### 自定义消息拦截器
 
 ```java
+
 @Component
 public class LoggingInterceptor implements PulsarMessageInterceptor {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(LoggingInterceptor.class);
-    
+
     @Override
     public Object beforeSend(String topic, Object message) {
         logger.info("Sending message to topic: {}, message: {}", topic, message);
         return message;
     }
-    
+
     @Override
     public void afterSend(String topic, Object message, MessageId messageId, Exception exception) {
         if (exception != null) {
@@ -163,13 +168,13 @@ public class LoggingInterceptor implements PulsarMessageInterceptor {
             logger.info("Message sent successfully to topic: {}, messageId: {}", topic, messageId);
         }
     }
-    
+
     @Override
     public boolean beforeReceive(Message<?> message) {
         logger.info("Receiving message: {}", message.getMessageId());
         return true;
     }
-    
+
     @Override
     public int getOrder() {
         return 1; // 设置拦截器优先级
@@ -180,19 +185,20 @@ public class LoggingInterceptor implements PulsarMessageInterceptor {
 ### 自定义死信队列处理器
 
 ```java
+
 @Component
 public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
-    
+
     @Override
     public void handleDeadLetter(String originalTopic, Message<?> message, Exception exception) {
         // 自定义死信处理逻辑
         System.out.println("Dead letter from topic: " + originalTopic);
         System.out.println("Message ID: " + message.getMessageId());
         System.out.println("Error: " + exception.getMessage());
-        
+
         // 可以发送到监控系统、数据库等
     }
-    
+
     @Override
     public int getMaxRetries() {
         return 5; // 自定义最大重试次数
@@ -205,13 +211,14 @@ public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
 ### EnablePulsar 注解选项
 
 ```java
+
 @EnablePulsar(
-    enabled = true,                    // 是否启用 Pulsar
-    enableTransaction = false,         // 是否启用事务支持
-    enableHealthCheck = true,          // 是否启用健康检查
-    enableInterceptor = true,          // 是否启用消息拦截器
-    enableDeadLetterQueue = false,     // 是否启用死信队列
-    enableRetry = true                 // 是否启用消息重试
+        enabled = true,                    // 是否启用 Pulsar
+        enableTransaction = false,         // 是否启用事务支持
+        enableHealthCheck = true,          // 是否启用健康检查
+        enableInterceptor = true,          // 是否启用消息拦截器
+        enableDeadLetterQueue = false,     // 是否启用死信队列
+        enableRetry = true                 // 是否启用消息重试
 )
 @SpringBootApplication
 public class Application {
@@ -226,7 +233,7 @@ spring:
   pulsar:
     enabled: true
     service-url: pulsar://localhost:6650
-    
+
     # 生产者配置
     producer:
       default-topic: default-topic
@@ -236,7 +243,7 @@ spring:
       batching-enabled: true
       batching-max-messages: 1000
       batching-max-publish-delay: 10ms
-    
+
     # 消费者配置
     consumer:
       subscription-name: default-subscription
@@ -244,14 +251,14 @@ spring:
       ack-timeout: 30s
       receiver-queue-size: 1000
       auto-ack-oldest-chunked-message-on-queue-full: false
-    
+
     # 客户端配置
     client:
       operation-timeout: 30s
       connection-timeout: 10s
       num-io-threads: 1
       num-listener-threads: 1
-    
+
     # 认证配置
     authentication:
       enabled: false
@@ -260,7 +267,7 @@ spring:
       auth-params:
         key1: value1
         key2: value2
-    
+
     # 重试配置
     retry:
       enabled: true
@@ -269,15 +276,15 @@ spring:
       multiplier: 2.0
       max-delay: 30000
       use-random-delay: true
-    
+
     # 死信队列配置
     dead-letter:
       enabled: false
-    
+
     # 健康检查配置
     health:
       enabled: true
-    
+
     # 事务配置
     transaction:
       enabled: false
@@ -288,6 +295,7 @@ spring:
 Starter 提供了内置的健康检查功能，可以通过以下方式获取 Pulsar 连接状态：
 
 ```java
+
 @Autowired
 private PulsarHealthIndicator healthIndicator;
 

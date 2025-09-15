@@ -12,14 +12,13 @@
 - 💀 **死信队列**: 自动处理重试失败的消息到死信队列
 - 🔍 **消息拦截**: 支持自定义消息拦截器，用于日志、监控等
 - 💊 **健康检查**: 内置 Pulsar 连接健康检查
-- 🎯 **事务支持**: 支持 Pulsar 事务消息（开发中）
+- 🎯 **事务支持**: 支持 Pulsar 事务消息
 
 ## 快速开始
 
 ### 1. 添加依赖
 
 ```xml
-
 <dependency>
     <groupId>com.github.spring.mq</groupId>
     <artifactId>seven-spring-mq-pulsar-starter</artifactId>
@@ -32,7 +31,6 @@
 在你的 Spring Boot 应用主类上添加 `@EnablePulsar` 注解：
 
 ```java
-
 @SpringBootApplication
 @EnablePulsar
 public class Application {
@@ -42,7 +40,7 @@ public class Application {
 }
 ```
 
-### 3. 配置 Pulsar
+### 3. 基础配置
 
 在 `application.yml` 中配置 Pulsar 连接信息：
 
@@ -76,10 +74,11 @@ spring:
 
 ## 使用示例
 
-### 发送消息
+### 消息发送
+
+#### 基础消息发送
 
 ```java
-
 @Service
 public class MessageService {
 
@@ -109,10 +108,47 @@ public class MessageService {
 }
 ```
 
-### 接收消息
+#### 业务场景示例
 
 ```java
+@Service
+public class OrderService {
 
+    @Autowired
+    private PulsarMessageSender messageSender;
+
+    public void createOrder(Order order) {
+        // 业务逻辑处理
+        processOrder(order);
+
+        // 发送订单创建事件
+        messageSender.send("order-events", order);
+    }
+
+    public CompletableFuture<Void> sendEmailAsync(EmailMessage email) {
+        return messageSender.sendAsync("email-queue", email)
+                .thenAccept(messageId -> {
+                    log.info("Email queued successfully: {}", messageId);
+                })
+                .exceptionally(throwable -> {
+                    log.error("Failed to queue email", throwable);
+                    return null;
+                });
+    }
+
+    public void scheduleReminder(String userId, String message, long delayMinutes) {
+        long delayMillis = delayMinutes * 60 * 1000;
+        messageSender.sendDelayed("reminders",
+                new ReminderMessage(userId, message), delayMillis);
+    }
+}
+```
+
+### 消息接收
+
+#### 基础消息监听
+
+```java
 @Component
 public class MessageListener {
 
@@ -145,10 +181,89 @@ public class MessageListener {
 }
 ```
 
-### 自定义消息拦截器
+#### 业务场景示例
 
 ```java
+@Component
+public class OrderEventListener {
 
+    @PulsarListener(topic = "order-events", subscription = "order-processor")
+    public void handleOrderEvent(Order order) {
+        log.info("Processing order: {}", order.getId());
+
+        if ("CREATED".equals(order.getStatus())) {
+            processNewOrder(order);
+        } else if ("CANCELLED".equals(order.getStatus())) {
+            processCancelledOrder(order);
+        }
+    }
+
+    // 支付处理 - 共享订阅模式
+    @PulsarListener(
+            topic = "payment-requests",
+            subscription = "payment-processor",
+            subscriptionType = "Shared"
+    )
+    public void processPayment(PaymentRequest request) {
+        try {
+            PaymentResult result = paymentGateway.process(request);
+            
+            if (result.isSuccess()) {
+                messageSender.send("payment-events",
+                        new PaymentSuccessEvent(request.getOrderId(), result));
+            } else {
+                messageSender.send("payment-events",
+                        new PaymentFailedEvent(request.getOrderId(), result.getError()));
+            }
+        } catch (Exception e) {
+            log.error("Payment processing failed", e);
+            throw e; // 触发重试机制
+        }
+    }
+}
+```
+
+## 消息拦截器
+
+### 拦截器接口
+
+消息拦截器提供了在消息发送和接收过程中进行拦截处理的能力：
+
+```java
+public interface PulsarMessageInterceptor {
+
+    // 发送消息前拦截
+    default Object beforeSend(String topic, Object message) {
+        return message;
+    }
+
+    // 发送消息后拦截
+    default void afterSend(String topic, Object message, MessageId messageId, Exception exception) {
+        // 默认空实现
+    }
+
+    // 接收消息前拦截
+    default boolean beforeReceive(Message<?> message) {
+        return true;
+    }
+
+    // 接收消息后拦截
+    default void afterReceive(Message<?> message, Object processedMessage, Exception exception) {
+        // 默认空实现
+    }
+
+    // 获取拦截器优先级
+    default int getOrder() {
+        return 0;
+    }
+}
+```
+
+### 自定义拦截器示例
+
+#### 日志拦截器
+
+```java
 @Component
 public class LoggingInterceptor implements PulsarMessageInterceptor {
 
@@ -182,10 +297,75 @@ public class LoggingInterceptor implements PulsarMessageInterceptor {
 }
 ```
 
-### 自定义死信队列处理器
+#### 消息审计拦截器
 
 ```java
+@Component
+public class MessageAuditInterceptor implements PulsarMessageInterceptor {
 
+    @Autowired
+    private AuditService auditService;
+
+    @Override
+    public Object beforeSend(String topic, Object message) {
+        auditService.logMessageSent(topic, message);
+        
+        // 可以修改消息内容
+        if (message instanceof AuditableMessage) {
+            ((AuditableMessage) message).setAuditInfo(getCurrentUser(), System.currentTimeMillis());
+        }
+        
+        return message;
+    }
+
+    @Override
+    public boolean beforeReceive(Message<?> message) {
+        // 检查消息是否应该被处理
+        String topic = message.getTopicName();
+        if (isBlacklistedTopic(topic)) {
+            log.warn("Message from blacklisted topic ignored: {}", topic);
+            return false;
+        }
+        
+        auditService.logMessageReceived(message);
+        return true;
+    }
+
+    @Override
+    public int getOrder() {
+        return 1; // 高优先级
+    }
+}
+```
+
+#### 性能监控拦截器
+
+```java
+@Component
+public class PerformanceInterceptor implements PulsarMessageInterceptor {
+    private final ThreadLocal<Long> startTime = new ThreadLocal<>();
+
+    @Override
+    public Object beforeSend(String topic, Object message) {
+        startTime.set(System.currentTimeMillis());
+        return message;
+    }
+
+    @Override
+    public void afterSend(String topic, Object message, MessageId messageId, Exception exception) {
+        Long start = startTime.get();
+        if (start != null) {
+            long duration = System.currentTimeMillis() - start;
+            System.out.println("发送耗时: " + duration + "ms");
+            startTime.remove();
+        }
+    }
+}
+```
+
+### 死信队列处理
+
+```java
 @Component
 public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
 
@@ -196,7 +376,23 @@ public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
         System.out.println("Message ID: " + message.getMessageId());
         System.out.println("Error: " + exception.getMessage());
 
-        // 可以发送到监控系统、数据库等
+        // 保存到数据库用于后续分析
+        DeadLetterRecord record = new DeadLetterRecord();
+        record.setOriginalTopic(originalTopic);
+        record.setMessageId(message.getMessageId().toString());
+        record.setMessageData(new String(message.getData()));
+        record.setErrorMessage(exception.getMessage());
+        record.setTimestamp(System.currentTimeMillis());
+
+        messageRepository.saveDeadLetterRecord(record);
+
+        // 发送告警通知
+        if (isCriticalTopic(originalTopic)) {
+            notificationService.sendAlert(
+                    "Critical message failed processing",
+                    String.format("Topic: %s, Error: %s", originalTopic, exception.getMessage())
+            );
+        }
     }
 
     @Override
@@ -206,12 +402,141 @@ public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
 }
 ```
 
+## 事务支持
+
+### 事务配置
+
+在 `application.yml` 中启用事务功能：
+
+```yaml
+spring:
+  pulsar:
+    service-url: pulsar://localhost:6650
+    transaction:
+      enabled: true                                    # 启用事务
+      timeout: PT1M                                   # 事务超时时间（1分钟）
+      coordinator-topic: persistent://pulsar/system/transaction_coordinator_assign
+      buffer-snapshot-segment-size: 1048576           # 1MB
+      buffer-snapshot-min-time-in-millis: PT5S        # 5秒
+      buffer-snapshot-max-transaction-count: 1000
+      log-store-size: 1073741824                      # 1GB
+```
+
+### 事务使用方式
+
+#### 注解方式（推荐）
+
+```java
+@Service
+public class MessageService {
+
+    @Autowired
+    private PulsarTemplate pulsarTemplate;
+
+    @PulsarTransactional
+    public void sendMessages(String topic, List<String> messages) {
+        // 获取当前事务
+        Transaction transaction = PulsarTransactionUtils.getCurrentTransaction();
+
+        for (String message : messages) {
+            // 在事务中发送消息
+            pulsarTemplate.send(topic, message, transaction);
+        }
+
+        // 如果方法正常结束，事务会自动提交
+        // 如果抛出异常，事务会自动回滚
+    }
+}
+```
+
+#### 编程式事务
+
+```java
+@Service
+public class MessageService {
+
+    @Autowired
+    private PulsarTemplate pulsarTemplate;
+
+    @Autowired
+    private TransactionTemplate pulsarTransactionTemplate;
+
+    public void sendMessages(String topic, List<String> messages) {
+        pulsarTransactionTemplate.execute(status -> {
+            try {
+                Transaction transaction = PulsarTransactionUtils.getCurrentTransaction();
+
+                for (String message : messages) {
+                    pulsarTemplate.send(topic, message, transaction);
+                }
+
+                return "Success";
+            } catch (Exception e) {
+                status.setRollbackOnly();
+                throw new RuntimeException("Transaction failed", e);
+            }
+        });
+    }
+}
+```
+
+#### 手动事务管理
+
+```java
+@Service
+public class MessageService {
+
+    @Autowired
+    private PulsarTemplate pulsarTemplate;
+
+    @Autowired
+    private PulsarTransactionBuilderFactory transactionBuilderFactory;
+
+    public void sendMessages(String topic, List<String> messages) {
+        Transaction transaction = null;
+        try {
+            // 创建事务
+            transaction = transactionBuilderFactory.newTransactionBuilder().build().get();
+
+            for (String message : messages) {
+                pulsarTemplate.send(topic, message, transaction);
+            }
+
+            // 提交事务
+            transaction.commit().get();
+
+        } catch (Exception e) {
+            if (transaction != null) {
+                try {
+                    transaction.abort().get();
+                } catch (Exception rollbackException) {
+                    // 处理回滚异常
+                }
+            }
+            throw new RuntimeException("Transaction failed", e);
+        }
+    }
+}
+```
+
+### 事务工具类
+
+```java
+// 获取当前事务
+Transaction currentTx = PulsarTransactionUtils.getCurrentTransaction();
+
+// 检查是否存在活跃事务
+boolean isActive = PulsarTransactionUtils.isTransactionActive();
+
+// 获取当前事务ID
+String txnId = PulsarTransactionUtils.getCurrentTransactionId();
+```
+
 ## 高级配置
 
 ### EnablePulsar 注解选项
 
 ```java
-
 @EnablePulsar(
         enabled = true,                    // 是否启用 Pulsar
         enableTransaction = false,         // 是否启用事务支持
@@ -228,28 +553,30 @@ public class Application {
 
 ### 完整配置示例
 
+#### 生产环境配置
+
 ```yaml
 spring:
   pulsar:
     enabled: true
-    service-url: pulsar://localhost:6650
+    service-url: pulsar://pulsar-cluster:6650
 
     # 生产者配置
     producer:
-      default-topic: default-topic
-      send-timeout: 30s
+      default-topic: ${app.name}-events
+      send-timeout: 10s
       block-if-queue-full: false
       max-pending-messages: 1000
       batching-enabled: true
-      batching-max-messages: 1000
-      batching-max-publish-delay: 10ms
+      batching-max-messages: 100
+      batching-max-publish-delay: 5ms
 
     # 消费者配置
     consumer:
-      subscription-name: default-subscription
-      subscription-type: Exclusive
-      ack-timeout: 30s
-      receiver-queue-size: 1000
+      subscription-name: ${app.name}-${app.instance}
+      subscription-type: Shared
+      ack-timeout: 60s
+      receiver-queue-size: 500
       auto-ack-oldest-chunked-message-on-queue-full: false
 
     # 客户端配置
@@ -261,8 +588,8 @@ spring:
 
     # 认证配置
     authentication:
-      enabled: false
-      token: your-jwt-token
+      enabled: true
+      token: ${PULSAR_JWT_TOKEN}
       auth-plugin-class-name: org.apache.pulsar.client.impl.auth.AuthenticationToken
       auth-params:
         key1: value1
@@ -271,15 +598,15 @@ spring:
     # 重试配置
     retry:
       enabled: true
-      max-retries: 3
-      initial-delay: 1000
-      multiplier: 2.0
-      max-delay: 30000
+      max-retries: 5
+      initial-delay: 2000
+      multiplier: 1.5
+      max-delay: 60000
       use-random-delay: true
 
     # 死信队列配置
     dead-letter:
-      enabled: false
+      enabled: true
 
     # 健康检查配置
     health:
@@ -288,14 +615,52 @@ spring:
     # 事务配置
     transaction:
       enabled: false
+
+logging:
+  level:
+    com.github.spring.mq.pulsar: INFO
+    org.apache.pulsar: WARN
+```
+
+#### 开发环境配置
+
+```yaml
+spring:
+  pulsar:
+    service-url: pulsar://localhost:6650
+
+    producer:
+      default-topic: dev-events
+      batching-enabled: false # 开发环境禁用批量以便调试
+
+    consumer:
+      subscription-name: dev-subscription
+      subscription-type: Exclusive
+
+    authentication:
+      enabled: false
+
+    retry:
+      enabled: true
+      max-retries: 2 # 开发环境减少重试次数
+      initial-delay: 500
+
+    dead-letter:
+      enabled: true
+
+logging:
+  level:
+    com.github.spring.mq.pulsar: DEBUG
+    org.apache.pulsar: INFO
 ```
 
 ## 监控和健康检查
 
-Starter 提供了内置的健康检查功能，可以通过以下方式获取 Pulsar 连接状态：
+### 健康检查
+
+Starter 提供了内置的健康检查功能：
 
 ```java
-
 @Autowired
 private PulsarHealthIndicator healthIndicator;
 
@@ -305,14 +670,122 @@ public void checkHealth() {
 }
 ```
 
+### 健康检查集成
+
+```java
+@RestController
+@RequestMapping("/health")
+public class HealthController {
+
+    @Autowired
+    private PulsarHealthIndicator pulsarHealthIndicator;
+
+    @GetMapping("/pulsar")
+    public ResponseEntity<Map<String, Object>> checkPulsarHealth() {
+        Map<String, Object> health = pulsarHealthIndicator.health();
+
+        if ("UP".equals(health.get("status"))) {
+            return ResponseEntity.ok(health);
+        } else {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(health);
+        }
+    }
+}
+```
+
 ## 最佳实践
 
-1. **主题命名**: 使用有意义的主题名称，建议使用分层结构，如 `app.service.event`
-2. **订阅模式**: 根据业务需求选择合适的订阅模式（Exclusive、Shared、Failover、Key_Shared）
-3. **消息确认**: 在消息处理完成后及时确认消息，避免消息重复消费
-4. **异常处理**: 在消息监听器中妥善处理异常，避免消息丢失
-5. **批量处理**: 对于高吞吐量场景，启用批量发送和接收
-6. **监控告警**: 配置适当的监控和告警机制
+### 1. 消息设计
+
+```java
+// 好的消息设计
+public class OrderEvent {
+    private String eventId;        // 唯一事件ID
+    private String eventType;      // 事件类型
+    private long timestamp;        // 时间戳
+    private String orderId;        // 业务ID
+    private Map<String, Object> data; // 事件数据
+    // 构造函数、getter、setter
+}
+
+// 避免的消息设计
+public class BadOrderEvent {
+    private Order order; // 包含过多信息
+    // 缺少事件元数据
+}
+```
+
+### 2. 主题命名
+
+使用有意义的主题名称，建议使用分层结构：
+- `app.service.event` - 应用.服务.事件
+- `order.payment.success` - 订单.支付.成功
+- `user.registration.completed` - 用户.注册.完成
+
+### 3. 订阅模式选择
+
+- **Exclusive**: 单一消费者，保证消息顺序
+- **Shared**: 多消费者负载均衡，提高吞吐量
+- **Failover**: 主备模式，高可用
+- **Key_Shared**: 按键分区，兼顾顺序和并发
+
+### 4. 异常处理
+
+```java
+@PulsarListener(topic = "orders", subscription = "order-processor")
+public void processOrder(Order order) {
+    try {
+        // 业务处理
+        orderService.process(order);
+    } catch (BusinessException e) {
+        // 业务异常，记录日志但不重试
+        log.error("Business error processing order: {}", order.getId(), e);
+        // 不抛出异常，避免重试
+    } catch (Exception e) {
+        // 系统异常，可以重试
+        log.error("System error processing order: {}", order.getId(), e);
+        throw e; // 抛出异常触发重试
+    }
+}
+```
+
+### 5. 性能优化
+
+```java
+@Service
+public class HighThroughputService {
+
+    // 使用异步发送提高性能
+    public void sendBatchMessages(List<Message> messages) {
+        List<CompletableFuture<MessageId>> futures = messages.stream()
+                .map(msg -> messageSender.sendAsync("batch-topic", msg))
+                .collect(Collectors.toList());
+
+        // 等待所有消息发送完成
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenRun(() -> log.info("All messages sent successfully"))
+                .exceptionally(throwable -> {
+                    log.error("Some messages failed to send", throwable);
+                    return null;
+                });
+    }
+}
+```
+
+### 6. 事务最佳实践
+
+- 保持事务范围尽可能小
+- 避免在事务中执行长时间运行的操作
+- 合理设置事务超时时间
+- 正确处理事务异常和回滚
+
+### 7. 拦截器注意事项
+
+- 拦截器会增加消息处理延迟，请谨慎使用
+- 确保拦截器实现的线程安全性
+- 合理设置拦截器优先级
+- 拦截器中避免执行耗时操作
+- 异常处理要得当，不要影响主流程
 
 ## 故障排除
 
@@ -322,6 +795,8 @@ public void checkHealth() {
 2. **认证失败**: 确认认证配置是否正确
 3. **消息丢失**: 检查消息确认机制是否正确实现
 4. **性能问题**: 调整批量处理、连接池等配置参数
+5. **事务超时**: 检查 `transaction.timeout` 配置，优化业务逻辑执行时间
+6. **事务协调器不可用**: 检查 Pulsar 集群配置，确认事务协调器服务正常运行
 
 ### 日志配置
 
@@ -330,7 +805,29 @@ logging:
   level:
     com.github.spring.mq.pulsar: DEBUG
     org.apache.pulsar: INFO
+    com.github.spring.mq.pulsar.config.PulsarTransactionConfiguration: DEBUG
+    org.apache.pulsar.client.impl.transaction: DEBUG
 ```
+
+### 调试技巧
+
+```java
+// 启用详细日志
+@PulsarTransactional
+public void debugTransaction() {
+    Transaction tx = PulsarTransactionUtils.getCurrentTransaction();
+    log.debug("Transaction ID: {}", tx.getTxnID());
+    log.debug("Transaction state: {}", tx.getState());
+}
+```
+
+## 注意事项
+
+1. **Pulsar 版本要求**: 确保使用支持事务的 Pulsar 版本（2.7.0+）
+2. **集群配置**: Pulsar 集群需要启用事务协调器
+3. **性能影响**: 事务和拦截器会带来一定的性能开销，请根据业务需求权衡使用
+4. **错误恢复**: 合理处理事务失败和重试逻辑
+5. **资源管理**: 及时释放事务资源，避免资源泄漏
 
 ## 贡献
 

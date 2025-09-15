@@ -1,56 +1,10 @@
 {
   "properties": [
     {
-      "name": "spring.pulsar.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Whether to enable Pulsar auto-configuration.",
-      "defaultValue": true
-    },
-    {
       "name": "spring.pulsar.service-url",
       "type": "java.lang.String",
       "description": "Pulsar service URL.",
       "defaultValue": "pulsar://localhost:6650"
-    },
-    {
-      "name": "spring.pulsar.producer.topic",
-      "type": "java.lang.String",
-      "description": "Default topic for message producer."
-    },
-    {
-      "name": "spring.pulsar.producer.producer-map",
-      "type": "java.util.Map<java.lang.String, com.github.spring.mq.pulsar.config.PulsarProperties.Producer>",
-      "description": "Default topic for message producer."
-    },
-    {
-      "name": "spring.pulsar.producer.send-timeout",
-      "type": "java.time.Duration",
-      "description": "Message send timeout.",
-      "defaultValue": "30s"
-    },
-    {
-      "name": "spring.pulsar.producer.batching-enabled",
-      "type": "java.lang.Boolean",
-      "description": "Whether to enable message batching.",
-      "defaultValue": true
-    },
-    {
-      "name": "spring.pulsar.consumer.subscription-name",
-      "type": "java.lang.String",
-      "description": "Default subscription name for consumers.",
-      "defaultValue": "default-subscription"
-    },
-    {
-      "name": "spring.pulsar.consumer.subscription-type",
-      "type": "java.lang.String",
-      "description": "Default subscription type for consumers.",
-      "defaultValue": "Exclusive"
-    },
-    {
-      "name": "spring.pulsar.consumer.ack-timeout",
-      "type": "java.time.Duration",
-      "description": "Message acknowledgment timeout.",
-      "defaultValue": "30s"
     },
     {
       "name": "spring.pulsar.authentication.enabled",
@@ -64,10 +18,212 @@
       "description": "JWT token for authentication."
     },
     {
-      "name": "spring.pulsar.retry.enabled",
+      "name": "spring.pulsar.authentication.auth-plugin-class-name",
+      "type": "java.lang.String",
+      "description": "Authentication plugin class name."
+    },
+    {
+      "name": "spring.pulsar.authentication.auth-params",
+      "type": "java.util.Map<java.lang.String,java.lang.String>",
+      "description": "Authentication parameters."
+    },
+    {
+      "name": "spring.pulsar.producer.topic",
+      "type": "java.lang.String",
+      "description": "Default topic for message producer."
+    },
+    {
+      "name": "spring.pulsar.producer.send-timeout",
+      "type": "java.time.Duration",
+      "description": "Message send timeout.",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "spring.pulsar.producer.block-if-queue-full",
       "type": "java.lang.Boolean",
-      "description": "Whether to enable message retry mechanism.",
+      "description": "Whether to block if the outgoing message queue is full.",
+      "defaultValue": false
+    },
+    {
+      "name": "spring.pulsar.producer.max-pending-messages",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of pending messages.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "spring.pulsar.producer.batching-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable message batching.",
       "defaultValue": true
+    },
+    {
+      "name": "spring.pulsar.producer.batching-max-messages",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of messages in a batch.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "spring.pulsar.producer.batching-max-publish-delay",
+      "type": "java.time.Duration",
+      "description": "Maximum delay for batching messages.",
+      "defaultValue": "10ms"
+    },
+    {
+      "name": "spring.pulsar.producer-map",
+      "type": "java.util.Map<java.lang.String,com.github.spring.mq.pulsar.config.PulsarProperties$Producer>",
+      "description": "Multiple producer configurations mapped by name."
+    },
+    {
+      "name": "spring.pulsar.consumer.topic",
+      "type": "java.lang.String",
+      "description": "Default topic for message consumer."
+    },
+    {
+      "name": "spring.pulsar.consumer.retry-topic",
+      "type": "java.lang.String",
+      "description": "Retry topic for failed messages."
+    },
+    {
+      "name": "spring.pulsar.consumer.dead-topic",
+      "type": "java.lang.String",
+      "description": "Dead letter topic for messages that exceed retry limit."
+    },
+    {
+      "name": "spring.pulsar.consumer.business-key",
+      "type": "java.lang.String",
+      "description": "Business key field name for message differentiation.",
+      "defaultValue": "businessPath"
+    },
+    {
+      "name": "spring.pulsar.consumer.subscription-name",
+      "type": "java.lang.String",
+      "description": "Default subscription name for consumers.",
+      "defaultValue": "default-subscription"
+    },
+    {
+      "name": "spring.pulsar.consumer.subscription-type",
+      "type": "java.lang.String",
+      "description": "Default subscription type for consumers (Exclusive, Shared, Failover, Key_Shared).",
+      "defaultValue": "Exclusive"
+    },
+    {
+      "name": "spring.pulsar.consumer.subscription-initial-position",
+      "type": "java.lang.String",
+      "description": "Initial position for subscription (Latest, Earliest).",
+      "defaultValue": "Latest"
+    },
+    {
+      "name": "spring.pulsar.consumer.auto-ack",
+      "type": "java.lang.Boolean",
+      "description": "Whether to automatically acknowledge messages.",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.pulsar.consumer.retry-time",
+      "type": "java.lang.Integer",
+      "description": "Number of retry attempts for failed messages.",
+      "defaultValue": 3
+    },
+    {
+      "name": "spring.pulsar.consumer.ack-timeout",
+      "type": "java.time.Duration",
+      "description": "Message acknowledgment timeout.",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "spring.pulsar.consumer.receiver-queue-size",
+      "type": "java.lang.Integer",
+      "description": "Size of the consumer receive queue.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "spring.pulsar.consumer.negative-ack-redelivery-delay",
+      "type": "java.lang.Integer",
+      "description": "Delay in milliseconds for redelivery of negatively acknowledged messages.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "spring.pulsar.consumer.time-to-reconsume-delay",
+      "type": "java.lang.Integer",
+      "description": "Delay in milliseconds for message redelivery.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "spring.pulsar.consumer.auto-ack-oldest-chunked-message-on-queue-full",
+      "type": "java.lang.Boolean",
+      "description": "Whether to automatically acknowledge oldest chunked message when queue is full.",
+      "defaultValue": false
+    },
+    {
+      "name": "spring.pulsar.consumer-map",
+      "type": "java.util.Map<java.lang.String,com.github.spring.mq.pulsar.config.PulsarProperties$Consumer>",
+      "description": "Multiple consumer configurations mapped by name."
+    },
+    {
+      "name": "spring.pulsar.client.operation-timeout",
+      "type": "java.time.Duration",
+      "description": "Client operation timeout.",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "spring.pulsar.client.connection-timeout",
+      "type": "java.time.Duration",
+      "description": "Client connection timeout.",
+      "defaultValue": "10s"
+    },
+    {
+      "name": "spring.pulsar.client.num-io-threads",
+      "type": "java.lang.Integer",
+      "description": "Number of IO threads for the client.",
+      "defaultValue": 1
+    },
+    {
+      "name": "spring.pulsar.client.num-listener-threads",
+      "type": "java.lang.Integer",
+      "description": "Number of listener threads for the client.",
+      "defaultValue": 1
+    },
+    {
+      "name": "spring.pulsar.transaction.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable transaction support.",
+      "defaultValue": false
+    },
+    {
+      "name": "spring.pulsar.transaction.coordinator-topic",
+      "type": "java.lang.String",
+      "description": "Transaction coordinator topic.",
+      "defaultValue": "persistent://pulsar/system/transaction_coordinator_assign"
+    },
+    {
+      "name": "spring.pulsar.transaction.timeout",
+      "type": "java.time.Duration",
+      "description": "Transaction timeout.",
+      "defaultValue": "1m"
+    },
+    {
+      "name": "spring.pulsar.transaction.buffer-snapshot-segment-size",
+      "type": "java.lang.Integer",
+      "description": "Transaction buffer snapshot segment size in bytes.",
+      "defaultValue": 1048576
+    },
+    {
+      "name": "spring.pulsar.transaction.buffer-snapshot-min-time-in-millis",
+      "type": "java.time.Duration",
+      "description": "Minimum time interval for transaction buffer snapshots.",
+      "defaultValue": "5s"
+    },
+    {
+      "name": "spring.pulsar.transaction.buffer-snapshot-max-transaction-count",
+      "type": "java.lang.Integer",
+      "description": "Maximum transaction count for buffer snapshots.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "spring.pulsar.transaction.log-store-size",
+      "type": "java.lang.Long",
+      "description": "Transaction log store size in bytes.",
+      "defaultValue": 1073741824
     },
     {
       "name": "spring.pulsar.retry.max-retries",
@@ -82,22 +238,58 @@
       "defaultValue": 1000
     },
     {
-      "name": "spring.pulsar.dead-letter.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Whether to enable dead letter queue.",
-      "defaultValue": false
+      "name": "spring.pulsar.retry.multiplier",
+      "type": "java.lang.Double",
+      "description": "Multiplier for retry delay.",
+      "defaultValue": 2.0
     },
     {
-      "name": "spring.pulsar.health.enabled",
+      "name": "spring.pulsar.retry.max-delay",
+      "type": "java.lang.Long",
+      "description": "Maximum delay for retry in milliseconds.",
+      "defaultValue": 30000
+    },
+    {
+      "name": "spring.pulsar.retry.use-random-delay",
       "type": "java.lang.Boolean",
-      "description": "Whether to enable health check.",
+      "description": "Whether to use random delay for retries to avoid thundering herd.",
       "defaultValue": true
+    }
+  ],
+  "hints": [
+    {
+      "name": "spring.pulsar.consumer.subscription-type",
+      "values": [
+        {
+          "value": "Exclusive",
+          "description": "Only one consumer can connect to the subscription."
+        },
+        {
+          "value": "Shared",
+          "description": "Multiple consumers can connect to the same subscription."
+        },
+        {
+          "value": "Failover",
+          "description": "Multiple consumers can connect but only one receives messages."
+        },
+        {
+          "value": "Key_Shared",
+          "description": "Multiple consumers can connect and messages with the same key go to the same consumer."
+        }
+      ]
     },
     {
-      "name": "spring.pulsar.transaction.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Whether to enable transaction support.",
-      "defaultValue": false
+      "name": "spring.pulsar.consumer.subscription-initial-position",
+      "values": [
+        {
+          "value": "Latest",
+          "description": "Start consuming from the latest message."
+        },
+        {
+          "value": "Earliest",
+          "description": "Start consuming from the earliest available message."
+        }
+      ]
     }
   ]
 }

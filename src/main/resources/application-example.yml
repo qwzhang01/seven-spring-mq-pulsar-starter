@@ -3,13 +3,22 @@
 
 spring:
   pulsar:
-    # 是否启用 Pulsar（可以通过 @EnablePulsar 注解的 enabled 属性覆盖）
-    enabled: true
-    
     # Pulsar 服务地址
     service-url: pulsar://localhost:6650
 
-    # 生产者配置
+    # 认证配置
+    authentication:
+      # 是否启用认证
+      enabled: false
+      # JWT Token（如果使用 Token 认证）
+      # token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIifQ.9OHgpX0q7_7z1c5Q2X1Zn8X7c5Q2X1Zn8X7c5Q2X1Zn8
+      # 认证插件类名
+      # auth-plugin-class-name: org.apache.pulsar.client.impl.auth.AuthenticationToken
+      # 认证参数
+      # auth-params:
+      #   token: your-token-here
+
+    # 单生产者配置（与 producer-map 二选一）
     producer:
       # 默认主题（可选）
       topic: example-default-topic
@@ -25,20 +34,60 @@ spring:
       batching-max-messages: 1000
       # 批量发送最大延迟时间
       batching-max-publish-delay: 10ms
-    
-    # 消费者配置
+
+    # 多生产者配置（与 producer 二选一）
+    # producer-map:
+    #   orderProducer:
+    #     topic: order-topic
+    #     send-timeout: 30s
+    #     batching-enabled: true
+    #   paymentProducer:
+    #     topic: payment-topic
+    #     send-timeout: 15s
+    #     batching-enabled: false
+
+    # 单消费者配置（与 consumer-map 二选一）
     consumer:
+      # 默认主题（可选）
+      # topic: example-consumer-topic
+      # 重试主题
+      # retry-topic: example-retry-topic
+      # 死信主题
+      # dead-topic: example-dead-topic
+      # 业务区分字段
+      business-key: businessPath
       # 默认订阅名称
       subscription-name: example-subscription
       # 订阅类型：Exclusive, Shared, Failover, Key_Shared
       subscription-type: Exclusive
+      # 订阅初始位置：Latest, Earliest
+      subscription-initial-position: Latest
+      # 是否自动确认消息
+      auto-ack: true
+      # 重试次数
+      retry-time: 3
       # 消息确认超时时间
       ack-timeout: 30s
       # 接收队列大小
       receiver-queue-size: 1000
+      # 负确认消息重新投递延迟（毫秒）
+      negative-ack-redelivery-delay: 1000
+      # 消息重新消费延迟时间（毫秒）
+      time-to-reconsume-delay: 1000
       # 队列满时是否自动确认最旧的分块消息
       auto-ack-oldest-chunked-message-on-queue-full: false
-    
+
+    # 多消费者配置（与 consumer 二选一）
+    # consumer-map:
+    #   orderConsumer:
+    #     topic: order-topic
+    #     subscription-name: order-subscription
+    #     subscription-type: Shared
+    #   paymentConsumer:
+    #     topic: payment-topic
+    #     subscription-name: payment-subscription
+    #     subscription-type: Exclusive
+
     # 客户端配置
     client:
       # 操作超时时间
@@ -49,23 +98,26 @@ spring:
       num-io-threads: 1
       # 监听器线程数
       num-listener-threads: 1
-    
-    # 认证配置
-    authentication:
-      # 是否启用认证
+
+    # 事务配置
+    transaction:
+      # 是否启用事务支持
       enabled: false
-      # JWT Token（如果使用 Token 认证）
-      # token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIifQ.9OHgpX0q7_7z1c5Q2X1Zn8X7c5Q2X1Zn8X7c5Q2X1Zn8
-      # 认证插件类名
-      # auth-plugin-class-name: org.apache.pulsar.client.impl.auth.AuthenticationToken
-      # 认证参数
-      # auth-params:
-      #   token: your-token-here
-    
+      # 事务协调器主题
+      coordinator-topic: persistent://pulsar/system/transaction_coordinator_assign
+      # 事务超时时间
+      timeout: 1m
+      # 事务缓冲区快照段大小（字节）
+      buffer-snapshot-segment-size: 1048576
+      # 事务缓冲区快照最小时间间隔
+      buffer-snapshot-min-time-in-millis: 5s
+      # 事务缓冲区快照最大事务数
+      buffer-snapshot-max-transaction-count: 1000
+      # 事务日志存储大小（字节）
+      log-store-size: 1073741824
+
     # 重试配置
     retry:
-      # 是否启用重试
-      enabled: true
       # 最大重试次数
       max-retries: 3
       # 初始延迟时间（毫秒）
@@ -76,21 +128,6 @@ spring:
       max-delay: 30000
       # 是否使用随机延迟（避免雪崩效应）
       use-random-delay: true
-    
-    # 死信队列配置
-    dead-letter:
-      # 是否启用死信队列
-      enabled: false
-    
-    # 健康检查配置
-    health:
-      # 是否启用健康检查
-      enabled: true
-    
-    # 事务配置
-    transaction:
-      # 是否启用事务支持
-      enabled: false
 
 # 日志配置
 logging:
@@ -112,3 +149,16 @@ info:
     name: Pulsar Starter Example
     description: Example application demonstrating Pulsar Starter features
     version: 1.0.0
+
+# 管理端点配置（用于健康检查等）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    pulsar:
+      enabled: true

@@ -103,9 +103,6 @@ public class PulsarListenerContainer {
         Exception processException = null;
 
         try {
-            logger.info("消息：" + new String(message.getData()));
-            consumer.acknowledge(message);
-
             // 执行接收前拦截器
             if (!pulsarTemplate.applyBeforeReceiveInterceptors(message)) {
                 logger.debug("Message filtered by beforeReceive interceptor");

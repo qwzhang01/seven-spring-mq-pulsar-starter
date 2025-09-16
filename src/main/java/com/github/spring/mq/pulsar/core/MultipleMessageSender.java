@@ -63,21 +63,19 @@ public interface MultipleMessageSender {
     /**
      * 发送延时消息
      *
-     * @param topic
      * @param message
      * @param delay
      * @param unit
      * @return
      */
-    MessageId sendAfter(String topic, Object message, long delay, TimeUnit unit);
+    MessageId sendAfter(Object message, long delay, TimeUnit unit);
 
     /**
      * 发送延时消息
      *
-     * @param topic
      * @param message
      * @param timestamp
      * @return
      */
-    MessageId sendAt(String topic, Object message, long timestamp);
+    MessageId sendAt(Object message, long timestamp);
 }

@@ -69,7 +69,7 @@ public class DefaultMultipleMessageSender implements MultipleMessageSender {
     }
 
     @Override
-    public MessageId sendAfter(String topic, Object message, long delay, TimeUnit unit) {
+    public MessageId sendAfter(Object message, long delay, TimeUnit unit) {
         validTopic();
         try {
             return pulsarTemplate.sendAfter(topic, message, delay, unit);
@@ -79,7 +79,7 @@ public class DefaultMultipleMessageSender implements MultipleMessageSender {
     }
 
     @Override
-    public MessageId sendAt(String topic, Object message, long timestamp) {
+    public MessageId sendAt(Object message, long timestamp) {
         validTopic();
         try {
             return pulsarTemplate.sendAt(topic, message, timestamp);

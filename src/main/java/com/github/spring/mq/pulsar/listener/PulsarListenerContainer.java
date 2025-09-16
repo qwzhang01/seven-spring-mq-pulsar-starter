@@ -10,9 +10,7 @@ import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 /**
@@ -84,8 +82,8 @@ public class PulsarListenerContainer {
     private void listen() {
         while (running) {
             try {
-                Message<byte[]> message = consumer.receive();
-                processMessage(message);
+                CompletableFuture<Message<byte[]>> receiveAsync = consumer.receiveAsync();
+                processMessage(receiveAsync);
             } catch (Exception e) {
                 if (running) {
                     logger.error("Error receiving message", e);
@@ -97,7 +95,13 @@ public class PulsarListenerContainer {
     /**
      * 处理消息
      */
-    private void processMessage(Message<byte[]> message) {
+    private void processMessage(CompletableFuture<Message<byte[]>> receiveAsync) throws ExecutionException, InterruptedException {
+        Message<byte[]> message = receiveAsync.get();
+
+        long publishTime = message.getPublishTime();
+        long eventTime = message.getEventTime();
+
+        logger.info("Received pulsar message publishTime: {}, eventTime: {}", publishTime, eventTime);
 
         Object deserializedMessage = null;
         Exception processException = null;

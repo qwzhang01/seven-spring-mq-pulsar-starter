@@ -1,5 +1,6 @@
 package com.github.spring.mq.pulsar.core;
 
+import com.github.spring.mq.pulsar.exception.PulsarConsumeReceiveException;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClientException;
@@ -46,7 +47,7 @@ public class DefaultPulsarMessageReceiver implements PulsarMessageReceiver {
             return null;
         } catch (Exception e) {
             receiveException = e;
-            throw new RuntimeException("Failed to receive message", e);
+            throw new PulsarConsumeReceiveException("Failed to receive message", e);
         } finally {
             // 执行接收后拦截器
             if (message != null) {
@@ -70,7 +71,7 @@ public class DefaultPulsarMessageReceiver implements PulsarMessageReceiver {
                                 try {
                                     consumer.acknowledge(message);
                                 } catch (PulsarClientException e) {
-                                    throw new RuntimeException("Failed to acknowledge message", e);
+                                    throw new PulsarConsumeReceiveException("Failed to acknowledge message", e);
                                 }
                                 return null;
                             }
@@ -80,7 +81,7 @@ public class DefaultPulsarMessageReceiver implements PulsarMessageReceiver {
                             return result;
                         } catch (Exception e) {
                             processException = e;
-                            throw new RuntimeException("Failed to acknowledge message", e);
+                            throw new PulsarConsumeReceiveException("Failed to acknowledge message", e);
                         } finally {
                             // 执行接收后拦截器
                             pulsarTemplate.applyAfterReceiveInterceptors(message, result, processException);
@@ -129,7 +130,7 @@ public class DefaultPulsarMessageReceiver implements PulsarMessageReceiver {
 
             return results;
         } catch (PulsarClientException e) {
-            throw new RuntimeException("Failed to receive batch messages", e);
+            throw new PulsarConsumeReceiveException("Failed to receive batch messages", e);
         }
     }
 
@@ -138,7 +139,7 @@ public class DefaultPulsarMessageReceiver implements PulsarMessageReceiver {
         try {
             return pulsarTemplate.createConsumer(topic, subscription);
         } catch (PulsarClientException e) {
-            throw new RuntimeException("Failed to create consumer", e);
+            throw new PulsarConsumeReceiveException("Failed to create consumer", e);
         }
     }
 

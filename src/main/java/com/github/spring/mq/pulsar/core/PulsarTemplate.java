@@ -1,6 +1,5 @@
 package com.github.spring.mq.pulsar.core;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.config.PulsarInterceptorConfiguration;
@@ -14,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.pulsar.client.api.*;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -61,7 +61,8 @@ public final class PulsarTemplate {
         // 执行发送前拦截器
         Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
         if (interceptedMessage == null) {
-            return null; // 拦截器返回null，不发送消息
+            // 拦截器返回null，不发送消息
+            return null;
         }
 
         MessageId messageId = null;
@@ -257,33 +258,25 @@ public final class PulsarTemplate {
      */
     public <T> T deserialize(byte[] data, String dataKey, Class<T> clazz) {
         try {
-            if (clazz == String.class) {
-                return clazz.cast(new String(data));
-            } else if (clazz == byte[].class) {
-                return clazz.cast(data);
-            } else {
-                if (!StringUtils.hasText(dataKey)) {
-                    return objectMapper.readValue(data, clazz);
+            if (!StringUtils.hasText(dataKey)) {
+                if (clazz == String.class) {
+                    return clazz.cast(new String(data));
                 }
-                JsonNode node = objectMapper.readTree(data);
-                return objectMapper.treeToValue(node.get(dataKey), clazz);
+                if (clazz == byte[].class) {
+                    return clazz.cast(data);
+                }
+                return objectMapper.readValue(data, clazz);
             }
-        } catch (Exception e) {
-            throw new JacksonException("Failed to deserialize object", e);
-        }
-    }
-    /**
-     * 反序列化对象
-     */
-    public <T> T deserialize(Object data,  Class<T> clazz) {
-        try {
+            JsonNode node = objectMapper.readTree(data);
+            JsonNode dataTree = node.get(dataKey);
+            String text = dataTree.asText();
             if (clazz == String.class) {
-                return clazz.cast(data);
-            } else if (clazz == byte[].class) {
-                return clazz.cast(data);
-            } else {
-                return objectMapper.treeToValue(objectMapper.readTree(objectMapper.writeValueAsString(data)), clazz);
+                return clazz.cast(text);
             }
+            if (clazz == byte[].class) {
+                return clazz.cast(text.getBytes(StandardCharsets.UTF_8));
+            }
+            return objectMapper.readValue(text, clazz);
         } catch (Exception e) {
             throw new JacksonException("Failed to deserialize object", e);
         }
@@ -296,15 +289,11 @@ public final class PulsarTemplate {
      * @param businessMap
      * @return
      */
-    public String deserializeBusinessType(byte[] data, Map<String, String> businessMap, Class<?> clazz) {
+    public String deserializeBusinessType(byte[] data, Map<String, String> businessMap) {
         if (businessMap.size() == 1) {
             return businessMap.keySet().iterator().next();
         }
         try {
-            if (clazz == byte[].class) {
-                return "";
-            }
-
             JsonNode jsonNode = objectMapper.readTree(new String(data));
             for (Map.Entry<String, String> entry : businessMap.entrySet()) {
                 JsonNode node = jsonNode.get(entry.getValue());
@@ -318,11 +307,6 @@ public final class PulsarTemplate {
                 }
             }
             return "";
-        } catch (JsonProcessingException e) {
-            if (clazz == String.class) {
-                return "";
-            }
-            throw new PulsarConsumerNotExistException("explain handler mapping exception", e);
         } catch (Exception e) {
             throw new PulsarConsumerNotExistException("explain handler mapping exception", e);
         }
@@ -331,7 +315,7 @@ public final class PulsarTemplate {
     /**
      * 执行发送前拦截器
      */
-    private Object applyBeforeSendInterceptors(String topic, Object message) {
+    public Object applyBeforeSendInterceptors(String topic, Object message) {
         if (interceptorRegistry == null) {
             return message;
         }
@@ -354,7 +338,7 @@ public final class PulsarTemplate {
     /**
      * 执行发送后拦截器
      */
-    private void applyAfterSendInterceptors(String topic, Object message, MessageId messageId, Throwable exception) {
+    public void applyAfterSendInterceptors(String topic, Object message, MessageId messageId, Throwable exception) {
         if (interceptorRegistry == null) {
             return;
         }

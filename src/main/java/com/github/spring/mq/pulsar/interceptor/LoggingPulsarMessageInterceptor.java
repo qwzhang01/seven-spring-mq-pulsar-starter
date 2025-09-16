@@ -1,5 +1,7 @@
 package com.github.spring.mq.pulsar.interceptor;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.slf4j.Logger;
@@ -15,10 +17,21 @@ import org.slf4j.LoggerFactory;
 public class LoggingPulsarMessageInterceptor implements PulsarMessageInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(LoggingPulsarMessageInterceptor.class);
+    private final ObjectMapper objectMapper;
+
+    public LoggingPulsarMessageInterceptor(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public Object beforeSend(String topic, Object message) {
-        logger.info("准备发送消息到主题: {}, 消息内容: {}", topic, message);
+        String logMsg = "";
+        try {
+            logMsg = message instanceof String ? (String) message : objectMapper.writeValueAsString(message);
+        } catch (JsonProcessingException e) {
+            throw new com.github.spring.mq.pulsar.exception.JacksonException("", e);
+        }
+        logger.info("准备发送消息到主题: {}, 消息内容: {}", topic, logMsg);
         // 可以在这里对消息进行预处理
         // 例如：添加时间戳、加密、验证等
 

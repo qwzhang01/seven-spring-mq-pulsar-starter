@@ -33,7 +33,7 @@ public class PulsarListenerContainerFactory {
     public PulsarListenerContainer createContainer(Object bean, Method method, PulsarListener annotation) {
         if (containerCache.containsKey(annotation.topic())) {
             PulsarListenerContainer container = containerCache.get(annotation.topic());
-            container.addMethod(annotation.businessPath(), method, annotation.businessKey(), annotation.dataKey());
+            container.addMethod(annotation.businessPath(), method, annotation.businessKey(), annotation.dataKey(), annotation.messageType());
             return container;
         }
 

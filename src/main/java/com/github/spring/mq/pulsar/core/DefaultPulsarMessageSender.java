@@ -1,6 +1,7 @@
 package com.github.spring.mq.pulsar.core;
 
 import com.github.spring.mq.pulsar.config.PulsarProperties;
+import com.github.spring.mq.pulsar.exception.PulsarProducerSendException;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.springframework.util.StringUtils;
@@ -33,7 +34,7 @@ public class DefaultPulsarMessageSender implements PulsarMessageSender {
         try {
             return pulsarTemplate.send(defaultTopic, message);
         } catch (PulsarClientException e) {
-            throw new RuntimeException("Failed to send message", e);
+            throw new PulsarProducerSendException("Failed to send message", e);
         }
     }
 
@@ -42,7 +43,7 @@ public class DefaultPulsarMessageSender implements PulsarMessageSender {
         try {
             return pulsarTemplate.send(topic, message);
         } catch (PulsarClientException e) {
-            throw new RuntimeException("Failed to send message to topic: " + topic, e);
+            throw new PulsarProducerSendException("Failed to send message to topic: " + topic, e);
         }
     }
 
@@ -51,7 +52,7 @@ public class DefaultPulsarMessageSender implements PulsarMessageSender {
         try {
             return pulsarTemplate.send(topic, key, message);
         } catch (PulsarClientException e) {
-            throw new RuntimeException("Failed to send message to topic: " + topic, e);
+            throw new PulsarProducerSendException("Failed to send message to topic: " + topic, e);
         }
     }
 
@@ -78,14 +79,26 @@ public class DefaultPulsarMessageSender implements PulsarMessageSender {
 
     @Override
     public MessageId sendDelayed(String topic, Object message, long delayMillis) {
+        // 执行发送前拦截器
+        Object interceptedMessage = pulsarTemplate.applyBeforeSendInterceptors(topic, message);
+        if (interceptedMessage == null) {
+            // 拦截器返回null，不发送消息
+            return null;
+        }
+        MessageId messageId = null;
+        Exception sendException = null;
         try {
-            return pulsarTemplate.getOrCreateProducer(topic)
+            messageId = pulsarTemplate.getOrCreateProducer(topic)
                     .newMessage()
-                    .value(pulsarTemplate.serialize(message))
+                    .value(pulsarTemplate.serialize(interceptedMessage))
                     .deliverAfter(delayMillis, TimeUnit.MILLISECONDS)
                     .send();
+            return messageId;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to send delayed message", e);
+            sendException = e;
+            throw new PulsarProducerSendException(e);
+        } finally {
+            pulsarTemplate.applyAfterSendInterceptors(topic, interceptedMessage, messageId, sendException);
         }
     }
 

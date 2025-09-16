@@ -1,8 +1,9 @@
 package com.github.spring.mq.pulsar.interceptor;
 
-import com.github.spring.mq.pulsar.core.PulsarTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.domain.MsgContext;
 import com.github.spring.mq.pulsar.domain.MsgDomain;
+import com.github.spring.mq.pulsar.exception.JacksonException;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.slf4j.Logger;
@@ -20,10 +21,10 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
 
     private final static Logger logger = LoggerFactory.getLogger(DefaultMultipleTenantInterceptor.class);
 
-    private PulsarTemplate pulsarTemplate;
+    private final ObjectMapper objectMapper;
 
-    public void setPulsarTemplate(PulsarTemplate pulsarTemplate) {
-        this.pulsarTemplate = pulsarTemplate;
+    protected DefaultMultipleTenantInterceptor(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -52,7 +53,7 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
 
     @Override
     public boolean beforeReceive(Message<?> message) {
-        MsgDomain<?> domain = pulsarTemplate.deserialize(message, MsgDomain.class);
+        MsgDomain<?> domain = deserialize(message.getData(), MsgDomain.class);
         MsgContext.setCorpKey(domain.getCorpKey());
         MsgContext.setAppName(domain.getAppName());
         MsgContext.setRequestId(domain.getRequestId());
@@ -70,6 +71,23 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
     public int getOrder() {
         // 最高优先级，确保能准确测量时间
         return 10;
+    }
+
+    /**
+     * 反序列化对象
+     */
+    private <T> T deserialize(byte[] data, Class<T> clazz) {
+        try {
+            if (clazz == String.class) {
+                return clazz.cast(data);
+            } else if (clazz == byte[].class) {
+                return clazz.cast(data);
+            } else {
+                return objectMapper.readValue(data, clazz);
+            }
+        } catch (Exception e) {
+            throw new JacksonException("Failed to deserialize object", e);
+        }
     }
 
     /**

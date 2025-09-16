@@ -159,7 +159,7 @@ public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProces
      * @param bean       包含监听器方法的 Bean 实例
      * @param method     带有 @PulsarListener 注解的方法
      * @param annotation @PulsarListener 注解实例，包含配置信息
-     * @throws RuntimeException 如果创建或启动容器失败
+     * @throws PulsarClientInitException 如果创建或启动容器失败
      */
     private void processListenerMethod(Object bean, Method method, PulsarListener annotation) {
         try {

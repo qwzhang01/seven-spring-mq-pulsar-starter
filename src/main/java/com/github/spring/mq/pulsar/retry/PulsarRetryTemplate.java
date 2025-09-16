@@ -1,5 +1,6 @@
 package com.github.spring.mq.pulsar.retry;
 
+import com.github.spring.mq.pulsar.exception.PulsarRetryException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +60,7 @@ public class PulsarRetryTemplate {
                     Thread.sleep(delay);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    throw new RuntimeException("Retry interrupted", ie);
+                    throw new PulsarRetryException("Retry interrupted", ie);
                 }
             }
         }

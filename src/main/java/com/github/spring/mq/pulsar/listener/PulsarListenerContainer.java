@@ -9,9 +9,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /**
  * Pulsar 监听器容器
@@ -24,35 +26,24 @@ public class PulsarListenerContainer {
 
     private final Consumer<byte[]> consumer;
     private final Object bean;
-    /**
-     * 映射key 到 method
-     */
-    private final ConcurrentHashMap<String, Method> methodMap = new ConcurrentHashMap<>();
-    /**
-     * 映射 businessKey 的字段名字
-     */
-    private final ConcurrentHashMap<String, String> businessMap = new ConcurrentHashMap<>();
-    /**
-     * 映射 data 数据 的字段名字
-     */
-    private final ConcurrentHashMap<String, String> dataMap = new ConcurrentHashMap<>();
+
+    private final ConcurrentHashMap<String, Handler> handlerMap = new ConcurrentHashMap<>();
 
     private final boolean autoAck;
-    private final Class<?> messageType;
+
     private final PulsarTemplate pulsarTemplate;
+
     private final ExecutorService executor;
+
     private volatile boolean running = false;
 
     public PulsarListenerContainer(Consumer<byte[]> consumer, Object bean,
-                                   String businessPath, Method method, String businessKey,String dataKey,
+                                   String businessPath, Method method, String businessKey, String dataKey,
                                    boolean autoAck, Class<?> messageType, PulsarTemplate pulsarTemplate) {
         this.consumer = consumer;
         this.bean = bean;
-        this.methodMap.put(businessPath, method);
-        this.businessMap.put(businessPath, businessKey);
-        this.dataMap.put(businessPath, dataKey);
+        this.handlerMap.put(businessPath, new Handler(businessKey, dataKey, method, messageType));
         this.autoAck = autoAck;
-        this.messageType = messageType;
         this.pulsarTemplate = pulsarTemplate;
         this.executor = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "pulsar-listener-" + method.getName());
@@ -70,7 +61,7 @@ public class PulsarListenerContainer {
         }
         running = true;
         executor.submit(this::listen);
-        logger.info("Started Pulsar listener for method: {}", methodMap.keySet());
+        logger.info("Started Pulsar listener for method: {}", handlerMap.keySet());
     }
 
     /**
@@ -78,13 +69,13 @@ public class PulsarListenerContainer {
      */
     public void stop() {
         running = false;
-        executor.shutdown();
+        this.executor.shutdown();
         try {
             consumer.close();
         } catch (PulsarClientException e) {
             logger.error("Error closing consumer", e);
         }
-        logger.info("Stopped Pulsar listener for method: {}", methodMap.keySet());
+        logger.info("Stopped Pulsar listener for method: {}", handlerMap.keySet());
     }
 
     /**
@@ -107,10 +98,14 @@ public class PulsarListenerContainer {
      * 处理消息
      */
     private void processMessage(Message<byte[]> message) {
+
         Object deserializedMessage = null;
         Exception processException = null;
 
         try {
+            logger.info("消息：" + new String(message.getData()));
+            consumer.acknowledge(message);
+
             // 执行接收前拦截器
             if (!pulsarTemplate.applyBeforeReceiveInterceptors(message)) {
                 logger.debug("Message filtered by beforeReceive interceptor");
@@ -120,13 +115,17 @@ public class PulsarListenerContainer {
                 return;
             }
 
-            String business = pulsarTemplate.deserializeBusinessType(message.getData(), businessMap, messageType);
-            Method method = this.methodMap.get(business);
-            if (method == null) {
-                throw new UnsupportedOperationException(business + "业务类型不支持，没有对应的消费者");
+            String business = pulsarTemplate.deserializeBusinessType(message.getData(), getBusinessMap());
+            Handler handler = this.handlerMap.get(business);
+            if (handler == null) {
+                throw new UnsupportedOperationException(business + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
             }
-            String dataKey = this.dataMap.get(business);
-            deserializedMessage = pulsarTemplate.deserialize(message.getData(), dataKey, messageType);
+            Method method = handler.method;
+            if (method == null) {
+                throw new UnsupportedOperationException(business + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
+            }
+            String dataKey = handler.dataKey;
+            deserializedMessage = pulsarTemplate.deserialize(message.getData(), dataKey, handler.messageType);
 
             // 调用监听器方法
             ReflectionUtils.makeAccessible(method);
@@ -164,9 +163,37 @@ public class PulsarListenerContainer {
         }
     }
 
-    public void addMethod(String businessPath, Method method, String businessKey, String dataKey) {
-        this.methodMap.put(businessPath, method);
-        this.businessMap.put(businessPath, businessKey);
-        this.dataMap.put(businessPath, dataKey);
+    public void addMethod(String businessPath,
+                          Method method,
+                          String businessKey,
+                          String dataKey,
+                          Class<?> messageType) {
+        this.handlerMap.put(businessPath, new Handler(businessKey, dataKey, method, messageType));
+    }
+
+    /**
+     * 处理器信息
+     *
+     * @param businessKey 消息业务键 映射 businessKey 的字段名字
+     * @param dataKey     数据键 映射 data 数据 的字段名字
+     * @param method      方法 映射key 到 method
+     * @param messageType 消息类型
+     */
+    private record Handler(String businessKey, String dataKey, Method method, Class<?> messageType) {
+    }
+
+    private Map<String, String> businessMap = null;
+
+    private Map<String, String> getBusinessMap() {
+        if (businessMap != null) {
+            return businessMap;
+        }
+        this.businessMap = handlerMap.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().businessKey
+                ));
+
+        return businessMap;
     }
 }

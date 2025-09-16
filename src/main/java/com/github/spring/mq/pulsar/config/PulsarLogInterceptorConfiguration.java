@@ -1,5 +1,6 @@
 package com.github.spring.mq.pulsar.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.interceptor.LoggingPulsarMessageInterceptor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -16,7 +17,7 @@ public class PulsarLogInterceptorConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public LoggingPulsarMessageInterceptor loggingPulsarMessageInterceptor() {
-        return new LoggingPulsarMessageInterceptor();
+    public LoggingPulsarMessageInterceptor loggingPulsarMessageInterceptor(ObjectMapper objectMapper) {
+        return new LoggingPulsarMessageInterceptor(objectMapper);
     }
 }

@@ -127,13 +127,13 @@ public final class PulsarTemplate {
         try {
             Producer<byte[]> producer = getOrCreateProducer(topic);
             TypedMessageBuilder<byte[]> messageBuilder = producer.newMessage()
-                    .value(serialize(interceptedMessage));
+                    .value(serialize(interceptedMessage))
+                    .deliverAfter(delay, unit);
 
             if (StringUtils.hasText(key)) {
                 messageBuilder.key(key);
             }
 
-            messageBuilder.deliverAfter(delay, unit);
             messageId = messageBuilder.send();
             return messageId;
         } catch (Exception e) {
@@ -183,13 +183,13 @@ public final class PulsarTemplate {
         try {
             Producer<byte[]> producer = getOrCreateProducer(topic);
             TypedMessageBuilder<byte[]> messageBuilder = producer.newMessage()
-                    .value(serialize(interceptedMessage));
+                    .value(serialize(interceptedMessage))
+                    .deliverAt(timestamp);
 
             if (StringUtils.hasText(key)) {
                 messageBuilder.key(key);
             }
 
-            messageBuilder.deliverAt(timestamp);
             messageId = messageBuilder.send();
             return messageId;
         } catch (Exception e) {

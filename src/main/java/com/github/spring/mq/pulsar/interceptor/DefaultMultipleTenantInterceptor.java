@@ -53,6 +53,11 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
     @Override
     public boolean beforeReceive(Message<?> message) {
         MsgDomain<?> domain = pulsarTemplate.deserialize(message, MsgDomain.class);
+        MsgContext.setCorpKey(domain.getCorpKey());
+        MsgContext.setAppName(domain.getAppName());
+        MsgContext.setRequestId(domain.getRequestId());
+        MsgContext.setTime(domain.getTime());
+        MsgContext.setBusinessPath(domain.getBusinessPath());
         return handleMultiTenant(domain.getCorpKey());
     }
 

@@ -151,6 +151,7 @@ public class PulsarAutoConfiguration {
 
     @Primary
     @Bean("pulsarObjectMapper")
+    @ConditionalOnMissingBean
     public ObjectMapper pulsarObjectMapper() {
         ObjectMapper objectMapper = new ObjectMapper();
         //不区分大小写设置

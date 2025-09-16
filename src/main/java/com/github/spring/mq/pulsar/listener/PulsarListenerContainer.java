@@ -119,10 +119,16 @@ public class PulsarListenerContainer {
             String msgRoute = pulsarTemplate.deserializeMsgRoute(message.getData(), getBusinessMap());
             Handler handler = this.handlerMap.get(msgRoute);
             if (handler == null) {
+                if (autoAck) {
+                    consumer.acknowledge(message);
+                }
                 throw new UnsupportedOperationException(msgRoute + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
             }
             Method method = handler.method;
             if (method == null) {
+                if (autoAck) {
+                    consumer.acknowledge(message);
+                }
                 throw new UnsupportedOperationException(msgRoute + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
             }
             String dataKey = handler.dataKey;

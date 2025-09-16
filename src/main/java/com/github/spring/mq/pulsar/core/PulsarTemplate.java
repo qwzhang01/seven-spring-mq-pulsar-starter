@@ -89,6 +89,120 @@ public final class PulsarTemplate {
     }
 
     /**
+     * 发送延时消息
+     *
+     * @param topic
+     * @param message
+     * @param delay
+     * @param unit
+     * @return
+     * @throws PulsarClientException
+     */
+    public MessageId sendAfter(String topic, Object message, long delay, TimeUnit unit) throws PulsarClientException {
+        return sendAfter(topic, null, message, delay, unit);
+    }
+
+    /**
+     * 发送延时消息
+     *
+     * @param topic
+     * @param key
+     * @param message
+     * @param delay
+     * @param unit
+     * @return
+     * @throws PulsarClientException
+     */
+    public MessageId sendAfter(String topic, String key, Object message, long delay, TimeUnit unit) throws PulsarClientException {
+        // 执行发送前拦截器
+        Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
+        if (interceptedMessage == null) {
+            // 拦截器返回null，不发送消息
+            return null;
+        }
+
+        MessageId messageId = null;
+        Exception sendException = null;
+
+        try {
+            Producer<byte[]> producer = getOrCreateProducer(topic);
+            TypedMessageBuilder<byte[]> messageBuilder = producer.newMessage()
+                    .value(serialize(interceptedMessage));
+
+            if (StringUtils.hasText(key)) {
+                messageBuilder.key(key);
+            }
+
+            messageBuilder.deliverAfter(delay, unit);
+            messageId = messageBuilder.send();
+            return messageId;
+        } catch (Exception e) {
+            sendException = e;
+            throw e;
+        } finally {
+            // 执行发送后拦截器
+            applyAfterSendInterceptors(topic, interceptedMessage, messageId, sendException);
+        }
+    }
+
+
+    /**
+     * 发送延时消息
+     *
+     * @param topic
+     * @param message
+     * @param timestamp
+     * @return
+     * @throws PulsarClientException
+     */
+    public MessageId sendAt(String topic, Object message, long timestamp) throws PulsarClientException {
+        return sendAt(topic, null, message, timestamp);
+    }
+
+    /**
+     * 发送延时消息
+     *
+     * @param topic
+     * @param key
+     * @param message
+     * @param timestamp
+     * @return
+     * @throws PulsarClientException
+     */
+    public MessageId sendAt(String topic, String key, Object message, long timestamp) throws PulsarClientException {
+        // 执行发送前拦截器
+        Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
+        if (interceptedMessage == null) {
+            // 拦截器返回null，不发送消息
+            return null;
+        }
+
+        MessageId messageId = null;
+        Exception sendException = null;
+
+        try {
+            Producer<byte[]> producer = getOrCreateProducer(topic);
+            TypedMessageBuilder<byte[]> messageBuilder = producer.newMessage()
+                    .value(serialize(interceptedMessage));
+
+            if (StringUtils.hasText(key)) {
+                messageBuilder.key(key);
+            }
+
+            messageBuilder.deliverAt(timestamp);
+            messageId = messageBuilder.send();
+            return messageId;
+        } catch (Exception e) {
+            sendException = e;
+            throw e;
+        } finally {
+            // 执行发送后拦截器
+            applyAfterSendInterceptors(topic, interceptedMessage, messageId, sendException);
+        }
+    }
+
+
+    /**
      * 异步发送消息
      */
     public CompletableFuture<MessageId> sendAsync(String topic, Object message) {
@@ -289,7 +403,7 @@ public final class PulsarTemplate {
      * @param businessMap
      * @return
      */
-    public String deserializeBusinessType(byte[] data, Map<String, String> businessMap) {
+    public String deserializeMsgRoute(byte[] data, Map<String, String> businessMap) {
         if (businessMap.size() == 1) {
             return businessMap.keySet().iterator().next();
         }
@@ -315,7 +429,7 @@ public final class PulsarTemplate {
     /**
      * 执行发送前拦截器
      */
-    public Object applyBeforeSendInterceptors(String topic, Object message) {
+    private Object applyBeforeSendInterceptors(String topic, Object message) {
         if (interceptorRegistry == null) {
             return message;
         }
@@ -338,7 +452,7 @@ public final class PulsarTemplate {
     /**
      * 执行发送后拦截器
      */
-    public void applyAfterSendInterceptors(String topic, Object message, MessageId messageId, Throwable exception) {
+    private void applyAfterSendInterceptors(String topic, Object message, MessageId messageId, Throwable exception) {
         if (interceptorRegistry == null) {
             return;
         }

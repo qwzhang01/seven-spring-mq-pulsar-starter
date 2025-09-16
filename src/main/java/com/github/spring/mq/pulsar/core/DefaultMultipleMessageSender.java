@@ -69,29 +69,22 @@ public class DefaultMultipleMessageSender implements MultipleMessageSender {
     }
 
     @Override
-    public MessageId sendDelayed(Object message, long delayMillis) {
+    public MessageId sendAfter(String topic, Object message, long delay, TimeUnit unit) {
         validTopic();
-        // 执行发送前拦截器
-        Object interceptedMessage = pulsarTemplate.applyBeforeSendInterceptors(topic, message);
-        if (interceptedMessage == null) {
-            // 拦截器返回null，不发送消息
-            return null;
-        }
-        MessageId messageId = null;
-        Exception sendException = null;
-
         try {
-            messageId = pulsarTemplate.getOrCreateProducer(topic)
-                    .newMessage()
-                    .value(pulsarTemplate.serialize(interceptedMessage))
-                    .deliverAfter(delayMillis, TimeUnit.MILLISECONDS)
-                    .send();
-            return messageId;
-        } catch (Exception e) {
-            sendException = e;
-            throw new PulsarProducerSendException(e);
-        } finally {
-            pulsarTemplate.applyAfterSendInterceptors(topic, interceptedMessage, messageId, sendException);
+            return pulsarTemplate.sendAfter(topic, message, delay, unit);
+        } catch (PulsarClientException e) {
+            throw new PulsarProducerSendException("Failed to send message to topic: " + topic, e);
+        }
+    }
+
+    @Override
+    public MessageId sendAt(String topic, Object message, long timestamp) {
+        validTopic();
+        try {
+            return pulsarTemplate.sendAt(topic, message, timestamp);
+        } catch (PulsarClientException e) {
+            throw new PulsarProducerSendException("Failed to send message to topic: " + topic, e);
         }
     }
 

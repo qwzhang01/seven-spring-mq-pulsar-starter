@@ -115,14 +115,14 @@ public class PulsarListenerContainer {
                 return;
             }
 
-            String business = pulsarTemplate.deserializeBusinessType(message.getData(), getBusinessMap());
-            Handler handler = this.handlerMap.get(business);
+            String msgRoute = pulsarTemplate.deserializeMsgRoute(message.getData(), getBusinessMap());
+            Handler handler = this.handlerMap.get(msgRoute);
             if (handler == null) {
-                throw new UnsupportedOperationException(business + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
+                throw new UnsupportedOperationException(msgRoute + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
             }
             Method method = handler.method;
             if (method == null) {
-                throw new UnsupportedOperationException(business + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
+                throw new UnsupportedOperationException(msgRoute + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
             }
             String dataKey = handler.dataKey;
             deserializedMessage = pulsarTemplate.deserialize(message.getData(), dataKey, handler.messageType);
@@ -174,12 +174,12 @@ public class PulsarListenerContainer {
     /**
      * 处理器信息
      *
-     * @param businessKey 消息业务键 映射 businessKey 的字段名字
+     * @param msgRouteKey 消息业务键 映射 msgRouteKey 的字段名字
      * @param dataKey     数据键 映射 data 数据 的字段名字
      * @param method      方法 映射key 到 method
      * @param messageType 消息类型
      */
-    private record Handler(String businessKey, String dataKey, Method method, Class<?> messageType) {
+    private record Handler(String msgRouteKey, String dataKey, Method method, Class<?> messageType) {
     }
 
     private Map<String, String> businessMap = null;
@@ -191,7 +191,7 @@ public class PulsarListenerContainer {
         this.businessMap = handlerMap.entrySet().stream()
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
-                        entry -> entry.getValue().businessKey
+                        entry -> entry.getValue().msgRouteKey
                 ));
 
         return businessMap;

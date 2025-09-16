@@ -3,6 +3,7 @@ package com.github.spring.mq.pulsar.core;
 import org.apache.pulsar.client.api.MessageId;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Pulsar 消息发送器接口
@@ -70,12 +71,23 @@ public interface PulsarMessageSender {
     /**
      * 发送延迟消息
      *
-     * @param topic       主题名称
-     * @param message     消息内容
-     * @param delayMillis 延迟毫秒数
+     * @param topic   主题名称
+     * @param message 消息内容
+     * @param delay   延迟时间
+     * @param unit    延迟时间单位
      * @return 消息ID
      */
-    MessageId sendDelayed(String topic, Object message, long delayMillis);
+    MessageId sendAfter(String topic, Object message, long delay, TimeUnit unit);
+
+    /**
+     * 发送延迟消息
+     *
+     * @param topic
+     * @param message
+     * @param timestamp 发送时间
+     * @return
+     */
+    MessageId sendAt(String topic, Object message, long timestamp);
 
     /**
      * 发送事务消息

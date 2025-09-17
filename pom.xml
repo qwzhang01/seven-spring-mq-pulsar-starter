@@ -6,7 +6,7 @@
 
     <groupId>io.github.qwzhang01</groupId>
     <artifactId>seven-spring-mq-pulsar-starter</artifactId>
-    <version>1.2.8</version>
+    <version>1.2.8.1</version>
 
     <url>https://github.com/qwzhang01/seven-spring-mq-pulsar-starter</url>
     <name>Pulsar Spring Boot Starter</name>
@@ -52,7 +52,7 @@
         <spring-boot.version>3.1.5</spring-boot.version>
         <kafka.version>3.6.0</kafka.version>
         <pulsar.version>3.2.4</pulsar.version>
-        <jackson.version>2.15.2</jackson.version>
+        <jackson.version>2.20.0</jackson.version>
         <lang3.version>3.17.0</lang3.version>
     </properties>
 
@@ -114,16 +114,23 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
+            <version>2.20</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
         <!-- Validation API -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

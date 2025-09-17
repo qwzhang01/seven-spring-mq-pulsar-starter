@@ -3,7 +3,13 @@ package com.github.spring.mq.pulsar.config;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.github.spring.mq.pulsar.core.DefaultMultipleMessageSender;
 import com.github.spring.mq.pulsar.core.DefaultPulsarMessageSender;
 import com.github.spring.mq.pulsar.core.PulsarMessageSender;
@@ -26,12 +32,14 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -46,6 +54,8 @@ import java.util.concurrent.TimeUnit;
 public class PulsarAutoConfiguration {
 
     private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final String DATE_FORMAT = "yyyy-MM-dd";
+
     private final Log log = LogFactory.getLog(PulsarAutoConfiguration.class);
     private final PulsarProperties pulsarProperties;
 
@@ -127,33 +137,42 @@ public class PulsarAutoConfiguration {
         return multipleProducerBeanRegistrar;
     }
 
-    @Primary
-    @Bean("pulsarObjectMapper")
+    @Bean
     @ConditionalOnMissingBean
-    public ObjectMapper pulsarObjectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        //不区分大小写设置
-        objectMapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
-        //对象的所有字段全部列入
-        objectMapper.setSerializationInclusion(JsonInclude.Include.ALWAYS);
-        //忽略空Bean转json的错误
-        objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-        //取消默认转换timestamps形式
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        //忽略在json字符串中存在，但是在java对象中不存在对应属性的情况。防止错误
-        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        objectMapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
-        objectMapper.setDateFormat(new SimpleDateFormat(DATE_TIME_FORMAT));
-
-        // 默认启用，通常无需显式设置
-        objectMapper.enable(MapperFeature.USE_ANNOTATIONS);
-
-        // double json 格式化
+    public ObjectMapper objectMapper() {
         SimpleModule doubleModule = new SimpleModule();
         doubleModule.addSerializer(Double.class, DoubleFormatSerializer.INSTANCE);
-        objectMapper.registerModule(doubleModule);
 
-        return objectMapper;
+        JavaTimeModule javaTimeModule = new JavaTimeModule();
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT);
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
+
+        // 配置 LocalDateTime 序列化与反序列化
+        javaTimeModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(dateTimeFormatter));
+        javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(dateTimeFormatter));
+        // 配置 LocalDate 序列化与反序列化
+        javaTimeModule.addSerializer(LocalDate.class, new LocalDateSerializer(dateFormatter));
+        javaTimeModule.addDeserializer(LocalDate.class, new LocalDateDeserializer(dateFormatter));
+
+        return JsonMapper.builder()
+                //不区分大小写设置
+                .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
+                //对象的所有字段全部列入
+                .defaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.ALWAYS, JsonInclude.Include.NON_NULL))
+                //忽略空Bean转json的错误
+                .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+                //取消默认转换timestamps形式
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                //忽略在json字符串中存在，但是在java对象中不存在对应属性的情况。防止错误
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
+                .defaultDateFormat(new SimpleDateFormat(DATE_TIME_FORMAT))
+                // 默认启用，通常无需显式设置
+                .enable(MapperFeature.USE_ANNOTATIONS)
+                .build()
+                // double json 格式化
+                .registerModule(doubleModule)
+                .registerModule(javaTimeModule);
     }
 
     /**

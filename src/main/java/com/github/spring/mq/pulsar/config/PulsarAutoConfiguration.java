@@ -4,10 +4,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.github.spring.mq.pulsar.core.*;
+import com.github.spring.mq.pulsar.core.DefaultMultipleMessageSender;
+import com.github.spring.mq.pulsar.core.DefaultPulsarMessageSender;
+import com.github.spring.mq.pulsar.core.PulsarMessageSender;
+import com.github.spring.mq.pulsar.core.PulsarTemplate;
 import com.github.spring.mq.pulsar.exception.PulsarClientInitException;
-import com.github.spring.mq.pulsar.listener.PulsarListenerAnnotationBeanPostProcessor;
-import com.github.spring.mq.pulsar.listener.PulsarListenerContainerFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.pulsar.client.api.ClientBuilder;
@@ -62,7 +63,9 @@ public class PulsarAutoConfiguration {
         pulsarProperties.valid();
         // 初始化 Pulsar 客户端
         try {
-            ClientBuilder clientBuilder = PulsarClient.builder().serviceUrl(pulsarProperties.getServiceUrl()).operationTimeout((int) pulsarProperties.getClient().getOperationTimeout().toMillis(), TimeUnit.MILLISECONDS).connectionTimeout((int) pulsarProperties.getClient().getConnectionTimeout().toMillis(), TimeUnit.MILLISECONDS)
+            ClientBuilder clientBuilder = PulsarClient.builder().serviceUrl(pulsarProperties.getServiceUrl())
+                    .operationTimeout((int) pulsarProperties.getClient().getOperationTimeout().toMillis(), TimeUnit.MILLISECONDS)
+                    .connectionTimeout((int) pulsarProperties.getClient().getConnectionTimeout().toMillis(), TimeUnit.MILLISECONDS)
                     // netty的ioThreads负责网络IO操作，如果业务流量较大，可以调高ioThreads个数
                     .ioThreads(pulsarProperties.getClient().getNumIoThreads())
                     // 负责调用以listener模式启动的消费者的回调函数，建议配置大于该client负责的partition数目；
@@ -72,9 +75,11 @@ public class PulsarAutoConfiguration {
             PulsarProperties.Authentication auth = pulsarProperties.getAuthentication();
             if (auth.isEnabled()) {
                 if (StringUtils.hasText(auth.getToken())) {
-                    clientBuilder.authentication("org.apache.pulsar.client.impl.auth.AuthenticationToken", auth.getToken());
+                    clientBuilder.authentication("org.apache.pulsar.client.impl.auth.AuthenticationToken",
+                            auth.getToken());
                 } else if (StringUtils.hasText(auth.getAuthPluginClassName())) {
-                    clientBuilder.authentication(auth.getAuthPluginClassName(), auth.getAuthParams());
+                    clientBuilder.authentication(auth.getAuthPluginClassName(),
+                            auth.getAuthParams());
                 }
             }
 
@@ -95,24 +100,6 @@ public class PulsarAutoConfiguration {
         PulsarTemplate template = new PulsarTemplate(pulsarClient, pulsarProperties, objectMapper);
         template.setInterceptorRegistry(interceptorRegistry);
         return template;
-    }
-
-    /**
-     * 创建监听器容器工厂
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    public PulsarListenerContainerFactory pulsarListenerContainerFactory(PulsarTemplate pulsarTemplate) {
-        return new PulsarListenerContainerFactory(pulsarProperties, pulsarTemplate);
-    }
-
-    /**
-     * 创建监听器注解处理器
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    public PulsarListenerAnnotationBeanPostProcessor pulsarListenerAnnotationBeanPostProcessor(PulsarListenerContainerFactory containerFactory) {
-        return new PulsarListenerAnnotationBeanPostProcessor(containerFactory);
     }
 
     /**
@@ -138,15 +125,6 @@ public class PulsarAutoConfiguration {
         multipleProducerBeanRegistrar.setPulsarProperties(pulsarProperties);
         multipleProducerBeanRegistrar.setPulsarTemplate(pulsarTemplate);
         return multipleProducerBeanRegistrar;
-    }
-
-    /**
-     * 创建消息接收器
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    public PulsarMessageReceiver pulsarMessageReceiver(PulsarTemplate pulsarTemplate) {
-        return new DefaultPulsarMessageReceiver(pulsarTemplate);
     }
 
     @Primary

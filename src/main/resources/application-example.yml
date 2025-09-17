@@ -1,164 +1,234 @@
-# Pulsar Starter 示例配置文件
-# 复制此文件为 application.yml 并根据实际环境修改配置
+# Seven Spring MQ Pulsar Starter 配置示例
+# 这个文件展示了所有可用的配置选项和推荐的配置方式
 
 spring:
   pulsar:
-    # Pulsar 服务地址
-    service-url: pulsar://localhost:6650
+    # 基础配置
+    enabled: true                                    # 是否启用Pulsar功能
+    service-url: pulsar://localhost:6650            # Pulsar服务地址
 
     # 认证配置
     authentication:
-      # 是否启用认证
-      enabled: false
-      # JWT Token（如果使用 Token 认证）
-      # token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIifQ.9OHgpX0q7_7z1c5Q2X1Zn8X7c5Q2X1Zn8X7c5Q2X1Zn8
-      # 认证插件类名
+      enabled: false                                 # 是否启用认证
+      # token: eyJhbGciOiJIUzI1NiJ9...              # JWT认证令牌
       # auth-plugin-class-name: org.apache.pulsar.client.impl.auth.AuthenticationToken
-      # 认证参数
-      # auth-params:
-      #   token: your-token-here
+      # auth-params:                                 # 认证参数
+      #   key1: value1
+      #   key2: value2
 
-    # 单生产者配置（与 producer-map 二选一）
+    # 生产者配置
     producer:
-      # 默认主题（可选）
-      topic: example-default-topic
-      # 发送超时时间
-      send-timeout: 30s
-      # 队列满时是否阻塞
-      block-if-queue-full: false
-      # 最大待发送消息数
-      max-pending-messages: 1000
-      # 是否启用批量发送
-      batching-enabled: true
-      # 批量发送最大消息数
-      batching-max-messages: 1000
-      # 批量发送最大延迟时间
-      batching-max-publish-delay: 10ms
+      # topic: my-default-topic                      # 默认主题（可选）
+      send-timeout: 30s                             # 发送超时时间
+      block-if-queue-full: false                    # 队列满时是否阻塞
+      max-pending-messages: 1000                    # 最大待发送消息数
+      batching-enabled: true                        # 是否启用批量发送
+      batching-max-messages: 100                    # 批量发送最大消息数
+      batching-max-publish-delay: 10ms              # 批量发送最大延迟
 
-    # 多生产者配置（与 producer 二选一）
+    # 多个生产者配置示例（可选）
     # producer-map:
-    #   orderProducer:
-    #     topic: order-topic
-    #     send-timeout: 30s
+    #   order-producer:
+    #     topic: order-events
+    #     send-timeout: 10s
     #     batching-enabled: true
-    #   paymentProducer:
-    #     topic: payment-topic
-    #     send-timeout: 15s
+    #   notification-producer:
+    #     topic: notifications
+    #     send-timeout: 5s
     #     batching-enabled: false
 
-    # 单消费者配置（与 consumer-map 二选一）
+    # 消费者配置
     consumer:
-      # 默认主题（可选）
-      # topic: example-consumer-topic
-      # 重试主题
-      # retry-topic: example-retry-topic
-      # 死信主题
-      # dead-topic: example-dead-topic
-      # 业务区分字段
-      business-key: businessPath
-      # 默认订阅名称
-      subscription-name: example-subscription
-      # 订阅类型：Exclusive, Shared, Failover, Key_Shared
-      subscription-type: Exclusive
-      # 订阅初始位置：Latest, Earliest
-      subscription-initial-position: Latest
-      # 是否自动确认消息
-      auto-ack: true
-      # 重试次数
-      retry-time: 3
-      # 消息确认超时时间
-      ack-timeout: 30s
-      # 接收队列大小
-      receiver-queue-size: 1000
-      # 负确认消息重新投递延迟（毫秒）
-      negative-ack-redelivery-delay: 1000
-      # 消息重新消费延迟时间（毫秒）
-      time-to-reconsume-delay: 1000
-      # 队列满时是否自动确认最旧的分块消息
-      auto-ack-oldest-chunked-message-on-queue-full: false
+      # topic: my-default-topic                      # 默认主题（可选）
+      subscription-name: my-subscription            # 订阅名称
+      subscription-type: Shared                     # 订阅类型：Exclusive, Shared, Failover, Key_Shared
+      subscription-initial-position: Earliest      # 订阅初始位置：Earliest, Latest
+      auto-ack: true                               # 是否自动确认消息
+      retry-time: 3                                # 重试次数
+      ack-timeout: 30s                             # 消息确认超时时间
+      receiver-queue-size: 1000                    # 接收队列大小
+      negative-ack-redelivery-delay: 1000          # 负确认重新投递延迟（毫秒）
+      time-to-reconsume-delay: 1000                # 重新消费延迟时间（毫秒）
+      auto-ack-oldest-chunked-message-on-queue-full: false  # 队列满时是否自动确认最旧的分块消息
+      business-key: businessPath                   # 业务区分字段
 
-    # 多消费者配置（与 consumer 二选一）
+    # 多个消费者配置示例（可选）
     # consumer-map:
-    #   orderConsumer:
-    #     topic: order-topic
-    #     subscription-name: order-subscription
+    #   order-consumer:
+    #     topic: order-events
+    #     subscription-name: order-service
     #     subscription-type: Shared
-    #   paymentConsumer:
-    #     topic: payment-topic
-    #     subscription-name: payment-subscription
+    #   notification-consumer:
+    #     topic: notifications
+    #     subscription-name: notification-service
     #     subscription-type: Exclusive
 
     # 客户端配置
     client:
-      # 操作超时时间
-      operation-timeout: 30s
-      # 连接超时时间
-      connection-timeout: 10s
-      # IO 线程数
-      num-io-threads: 1
-      # 监听器线程数
-      num-listener-threads: 1
+      operation-timeout: 30s                       # 操作超时时间
+      connection-timeout: 10s                      # 连接超时时间
+      num-io-threads: 1                           # IO线程数
+      num-listener-threads: 1                     # 监听器线程数
 
     # 事务配置
     transaction:
-      # 是否启用事务支持
-      enabled: false
-      # 事务协调器主题
-      coordinator-topic: persistent://pulsar/system/transaction_coordinator_assign
-      # 事务超时时间
-      timeout: 1m
-      # 事务缓冲区快照段大小（字节）
-      buffer-snapshot-segment-size: 1048576
-      # 事务缓冲区快照最小时间间隔
-      buffer-snapshot-min-time-in-millis: 5s
-      # 事务缓冲区快照最大事务数
-      buffer-snapshot-max-transaction-count: 1000
-      # 事务日志存储大小（字节）
-      log-store-size: 1073741824
+      enabled: false                               # 是否启用事务
+      coordinator-topic: persistent://pulsar/system/transaction_coordinator_assign  # 事务协调器主题
+      timeout: PT1M                               # 事务超时时间（1分钟）
+      buffer-snapshot-segment-size: 1048576       # 事务缓冲区快照段大小（1MB）
+      buffer-snapshot-min-time-in-millis: PT5S    # 事务缓冲区快照最小时间间隔（5秒）
+      buffer-snapshot-max-transaction-count: 1000 # 事务缓冲区快照最大事务数
+      log-store-size: 1073741824                  # 事务日志存储大小（1GB）
 
-    # 重试配置
-    retry:
-      # 最大重试次数
-      max-retries: 3
-      # 初始延迟时间（毫秒）
-      initial-delay: 1000
-      # 延迟倍数
-      multiplier: 2.0
-      # 最大延迟时间（毫秒）
-      max-delay: 30000
-      # 是否使用随机延迟（避免雪崩效应）
-      use-random-delay: true
+    # 死信队列配置
+    dead-letter:
+      topic-suffix: "-DLQ"                        # 死信队列主题后缀
+      max-retries: 3                              # 最大重试次数
+
+      # 重试配置
+      retry:
+        smart-strategy-enabled: true              # 是否启用智能重试策略
+        base-delay: PT1S                          # 基础重试延迟（1秒）
+        max-delay: PT5M                           # 最大重试延迟（5分钟）
+        retry-window: PT24H                       # 重试时间窗口（24小时）
+        jitter-enabled: true                      # 是否启用抖动
+        jitter-factor: 0.2                       # 抖动因子（0.0-1.0）
+
+      # 清理配置
+      cleanup:
+        auto-cleanup-enabled: true                # 是否启用自动清理
+        message-expiration: P7D                   # 消息过期时间（7天）
+        cleanup-cron: "0 0 2 * * ?"              # 清理执行时间（每天凌晨2点）
+        retry-info-expiration: PT24H              # 重试信息过期时间（24小时）
+
+      # 监控配置
+      monitoring:
+        enabled: true                             # 是否启用监控
+        monitoring-interval: PT5M                 # 监控间隔（5分钟）
+        health-check-timeout: PT30S               # 健康检查超时时间（30秒）
+        alert-enabled: false                      # 是否启用告警
+        alert-threshold: 100                      # 告警阈值（死信消息数量）
+
+      # 统计配置
+      statistics:
+        enabled: true                             # 是否启用统计
+        retention-period: P30D                    # 统计数据保留时间（30天）
+        detailed-enabled: false                   # 是否启用详细统计
 
 # 日志配置
 logging:
   level:
-    # Pulsar Starter 日志级别
-    com.github.spring.mq.pulsar: INFO
-    # Pulsar 客户端日志级别
-    org.apache.pulsar: WARN
-    # 示例服务日志级别
-    com.github.spring.mq.pulsar.example: DEBUG
+    com.github.spring.mq.pulsar: INFO            # Pulsar Starter日志级别
+    org.apache.pulsar: WARN                      # Pulsar客户端日志级别
+    # 调试时可以启用以下配置
+    # com.github.spring.mq.pulsar.deadletter: DEBUG
+    # com.github.spring.mq.pulsar.transaction: DEBUG
 
-# 服务器配置（用于示例 REST API）
-server:
-  port: 8080
-
-# 应用信息
-info:
-  app:
-    name: Pulsar Starter Example
-    description: Example application demonstrating Pulsar Starter features
-    version: 1.0.0
-
-# 管理端点配置（用于健康检查等）
+# 管理端点配置（可选）
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,pulsar                # 暴露健康检查和Pulsar相关端点
   endpoint:
     health:
-      show-details: when-authorized
-  health:
-    pulsar:
+      show-details: always                        # 显示健康检查详情
+
+---
+# 开发环境配置
+spring:
+  config:
+    activate:
+      on-profile: dev
+  pulsar:
+    service-url: pulsar://localhost:6650
+    producer:
+      batching-enabled: false                     # 开发环境禁用批量以便调试
+    consumer:
+      subscription-name: dev-subscription
+      retry-time: 2                               # 开发环境减少重试次数
+    dead-letter:
+      max-retries: 2
+      cleanup:
+        message-expiration: P1D                   # 开发环境1天过期
+    authentication:
+      enabled: false
+
+logging:
+  level:
+    com.github.spring.mq.pulsar: DEBUG           # 开发环境启用调试日志
+    org.apache.pulsar: INFO
+
+---
+# 测试环境配置
+spring:
+  config:
+    activate:
+      on-profile: test
+  pulsar:
+    service-url: pulsar://test-pulsar:6650
+    producer:
+      send-timeout: 10s
+    consumer:
+      subscription-name: test-subscription
+    authentication:
       enabled: true
+      token: ${PULSAR_JWT_TOKEN}
+    dead-letter:
+      monitoring:
+        alert-enabled: true
+        alert-threshold: 50
+
+---
+# 生产环境配置
+spring:
+  config:
+    activate:
+      on-profile: prod
+  pulsar:
+    service-url: pulsar://prod-pulsar-cluster:6650
+    
+    # 生产环境优化配置
+    producer:
+      send-timeout: 10s
+      max-pending-messages: 2000
+      batching-enabled: true
+      batching-max-messages: 200
+      batching-max-publish-delay: 5ms
+    
+    consumer:
+      subscription-name: ${spring.application.name}-${HOSTNAME}
+      subscription-type: Shared
+      receiver-queue-size: 2000
+      ack-timeout: 60s
+    
+    client:
+      operation-timeout: 60s
+      connection-timeout: 30s
+      num-io-threads: 2
+      num-listener-threads: 2
+    
+    # 生产环境启用认证
+    authentication:
+      enabled: true
+      token: ${PULSAR_JWT_TOKEN}
+      auth-plugin-class-name: org.apache.pulsar.client.impl.auth.AuthenticationToken
+    
+    # 生产环境死信队列配置
+    dead-letter:
+      max-retries: 5
+      retry:
+        base-delay: PT2S
+        max-delay: PT10M
+      cleanup:
+        message-expiration: P30D                  # 生产环境30天过期
+      monitoring:
+        alert-enabled: true
+        alert-threshold: 200
+      statistics:
+        detailed-enabled: true
+
+logging:
+  level:
+    com.github.spring.mq.pulsar: INFO
+    org.apache.pulsar: WARN

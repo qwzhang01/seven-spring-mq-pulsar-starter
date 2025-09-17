@@ -3,6 +3,7 @@ package com.github.spring.mq.pulsar.listener;
 import com.github.spring.mq.pulsar.annotation.PulsarListener;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
 import com.github.spring.mq.pulsar.core.PulsarTemplate;
+import com.github.spring.mq.pulsar.domain.ListenerType;
 import org.apache.pulsar.client.api.Consumer;
 import org.springframework.util.StringUtils;
 
@@ -19,21 +20,24 @@ public class PulsarListenerContainerFactory {
 
     private final PulsarProperties pulsarProperties;
     private final PulsarTemplate pulsarTemplate;
-
+    private final ListenerType listenerType;
     private final ConcurrentHashMap<String, PulsarListenerContainer> containerCache = new ConcurrentHashMap<>();
 
-    public PulsarListenerContainerFactory(PulsarProperties pulsarProperties, PulsarTemplate pulsarTemplate) {
+    public PulsarListenerContainerFactory(PulsarProperties pulsarProperties,
+                                          PulsarTemplate pulsarTemplate, ListenerType listenerType) {
         this.pulsarProperties = pulsarProperties;
         this.pulsarTemplate = pulsarTemplate;
+        this.listenerType = listenerType;
     }
 
     /**
      * 创建监听器容器
      */
-    public PulsarListenerContainer createContainer(Object bean, Method method, PulsarListener annotation) {
+    public PulsarListenerContainer createContainer(Object bean, Method method,
+                                                   PulsarListener annotation) {
         if (containerCache.containsKey(annotation.topic())) {
             PulsarListenerContainer container = containerCache.get(annotation.topic());
-            container.addMethod(annotation.businessPath(), method, annotation.businessKey(), annotation.dataKey(), annotation.messageType());
+            container.addMethod(annotation, method);
             return container;
         }
 
@@ -52,10 +56,20 @@ public class PulsarListenerContainerFactory {
             throw new IllegalArgumentException("consumer topic is null");
         }
 
-        Consumer<byte[]> consumer = pulsarTemplate.getOrCreateConsumer(annotation.consumerName(), consumerProperty);
-        PulsarListenerContainer container = new PulsarListenerContainer(consumer, bean,
-                annotation.businessPath(), method, annotation.businessKey(), annotation.dataKey(),
-                consumerProperty.isAutoAck(), annotation.messageType(), pulsarTemplate);
+        Consumer<byte[]> consumer = pulsarTemplate.getOrCreateConsumer(annotation.consumerName(),
+                consumerProperty, listenerType, containerCache);
+
+        PulsarListenerContainer container = new PulsarListenerContainer(consumer,
+                bean,
+                annotation.businessPath(),
+                method,
+                annotation.businessKey(),
+                annotation.dataKey(),
+                consumerProperty.isAutoAck(),
+                annotation.messageType(),
+                pulsarTemplate,
+                listenerType);
+
         containerCache.put(annotation.topic(), container);
         return container;
     }

@@ -56,6 +56,8 @@ public class PulsarProperties {
      */
     private Transaction transaction = new Transaction();
 
+    private DeadLetterQueueProperties deadLetter;
+
     public String getServiceUrl() {
         return serviceUrl;
     }
@@ -120,6 +122,14 @@ public class PulsarProperties {
         this.transaction = transaction;
     }
 
+    public DeadLetterQueueProperties getDeadLetter() {
+        return deadLetter;
+    }
+
+    public void setDeadLetter(DeadLetterQueueProperties deadLetter) {
+        this.deadLetter = deadLetter;
+    }
+
     /**
      * 校验配置参数是否合法
      */
@@ -152,7 +162,7 @@ public class PulsarProperties {
      * 认证配置
      */
     public static class Authentication {
-        private boolean enabled = false;
+        private boolean enabled = true;
         private String token;
         private String authPluginClassName;
         private Map<String, String> authParams = new HashMap<>();
@@ -272,9 +282,15 @@ public class PulsarProperties {
          */
         private String businessKey = "businessPath";
 
-        private String subscriptionName = "default-subscription";
-        private String subscriptionType = "Exclusive";
-        private String subscriptionInitialPosition = "Latest";
+        private String subscriptionName = "sub1";
+        /**
+         * 订阅模式 Exclusive,Shared,Failover,Key_Shared
+         */
+        private String subscriptionType = "Shared";
+        /**
+         * 创建新订阅的消费模式，Earliest, Latest
+         */
+        private String subscriptionInitialPosition = "Earliest";
         private boolean autoAck = true;
         private int retryTime = 3;
         /**
@@ -545,6 +561,345 @@ public class PulsarProperties {
 
         public void setLogStoreSize(long logStoreSize) {
             this.logStoreSize = logStoreSize;
+        }
+    }
+
+
+    /**
+     * 死信队列配置属性
+     */
+    public static class DeadLetterQueueProperties {
+
+        /**
+         * 死信队列主题后缀
+         */
+        private String topicSuffix = "-DLQ";
+
+        /**
+         * 最大重试次数
+         */
+        private int maxRetries = 3;
+
+        /**
+         * 重试配置
+         */
+        private Retry retry = new Retry();
+
+        /**
+         * 清理配置
+         */
+        private Cleanup cleanup = new Cleanup();
+
+        /**
+         * 监控配置
+         */
+        private Monitoring monitoring = new Monitoring();
+
+        /**
+         * 统计配置
+         */
+        private Statistics statistics = new Statistics();
+
+        public String getTopicSuffix() {
+            return topicSuffix;
+        }
+
+        public void setTopicSuffix(String topicSuffix) {
+            this.topicSuffix = topicSuffix;
+        }
+
+        public int getMaxRetries() {
+            return maxRetries;
+        }
+
+        public void setMaxRetries(int maxRetries) {
+            this.maxRetries = maxRetries;
+        }
+
+        public Retry getRetry() {
+            return retry;
+        }
+
+        public void setRetry(Retry retry) {
+            this.retry = retry;
+        }
+
+        public Cleanup getCleanup() {
+            return cleanup;
+        }
+
+        public void setCleanup(Cleanup cleanup) {
+            this.cleanup = cleanup;
+        }
+
+        public Monitoring getMonitoring() {
+            return monitoring;
+        }
+
+        public void setMonitoring(Monitoring monitoring) {
+            this.monitoring = monitoring;
+        }
+
+        public Statistics getStatistics() {
+            return statistics;
+        }
+
+        public void setStatistics(Statistics statistics) {
+            this.statistics = statistics;
+        }
+
+        /**
+         * 重试配置
+         */
+        public static class Retry {
+            /**
+             * 是否启用智能重试策略
+             */
+            private boolean smartStrategyEnabled = true;
+
+            /**
+             * 基础重试延迟
+             */
+            private Duration baseDelay = Duration.ofSeconds(1);
+
+            /**
+             * 最大重试延迟
+             */
+            private Duration maxDelay = Duration.ofMinutes(5);
+
+            /**
+             * 重试时间窗口
+             */
+            private Duration retryWindow = Duration.ofHours(24);
+
+            /**
+             * 是否启用抖动
+             */
+            private boolean jitterEnabled = true;
+
+            /**
+             * 抖动因子（0.0-1.0）
+             */
+            private double jitterFactor = 0.2;
+
+            public boolean isSmartStrategyEnabled() {
+                return smartStrategyEnabled;
+            }
+
+            public void setSmartStrategyEnabled(boolean smartStrategyEnabled) {
+                this.smartStrategyEnabled = smartStrategyEnabled;
+            }
+
+            public Duration getBaseDelay() {
+                return baseDelay;
+            }
+
+            public void setBaseDelay(Duration baseDelay) {
+                this.baseDelay = baseDelay;
+            }
+
+            public Duration getMaxDelay() {
+                return maxDelay;
+            }
+
+            public void setMaxDelay(Duration maxDelay) {
+                this.maxDelay = maxDelay;
+            }
+
+            public Duration getRetryWindow() {
+                return retryWindow;
+            }
+
+            public void setRetryWindow(Duration retryWindow) {
+                this.retryWindow = retryWindow;
+            }
+
+            public boolean isJitterEnabled() {
+                return jitterEnabled;
+            }
+
+            public void setJitterEnabled(boolean jitterEnabled) {
+                this.jitterEnabled = jitterEnabled;
+            }
+
+            public double getJitterFactor() {
+                return jitterFactor;
+            }
+
+            public void setJitterFactor(double jitterFactor) {
+                this.jitterFactor = jitterFactor;
+            }
+        }
+
+        /**
+         * 清理配置
+         */
+        public static class Cleanup {
+            /**
+             * 是否启用自动清理
+             */
+            private boolean autoCleanupEnabled = true;
+
+            /**
+             * 消息过期时间
+             */
+            private Duration messageExpiration = Duration.ofDays(7);
+
+            /**
+             * 清理执行时间（cron表达式）
+             */
+            private String cleanupCron = "0 0 2 * * ?"; // 每天凌晨2点
+
+            /**
+             * 重试信息过期时间
+             */
+            private Duration retryInfoExpiration = Duration.ofHours(24);
+
+            public boolean isAutoCleanupEnabled() {
+                return autoCleanupEnabled;
+            }
+
+            public void setAutoCleanupEnabled(boolean autoCleanupEnabled) {
+                this.autoCleanupEnabled = autoCleanupEnabled;
+            }
+
+            public Duration getMessageExpiration() {
+                return messageExpiration;
+            }
+
+            public void setMessageExpiration(Duration messageExpiration) {
+                this.messageExpiration = messageExpiration;
+            }
+
+            public String getCleanupCron() {
+                return cleanupCron;
+            }
+
+            public void setCleanupCron(String cleanupCron) {
+                this.cleanupCron = cleanupCron;
+            }
+
+            public Duration getRetryInfoExpiration() {
+                return retryInfoExpiration;
+            }
+
+            public void setRetryInfoExpiration(Duration retryInfoExpiration) {
+                this.retryInfoExpiration = retryInfoExpiration;
+            }
+        }
+
+        /**
+         * 监控配置
+         */
+        public static class Monitoring {
+            /**
+             * 是否启用监控
+             */
+            private boolean enabled = true;
+
+            /**
+             * 监控间隔
+             */
+            private Duration monitoringInterval = Duration.ofMinutes(5);
+
+            /**
+             * 健康检查超时时间
+             */
+            private Duration healthCheckTimeout = Duration.ofSeconds(30);
+
+            /**
+             * 是否启用告警
+             */
+            private boolean alertEnabled = false;
+
+            /**
+             * 告警阈值（死信消息数量）
+             */
+            private long alertThreshold = 100;
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public void setEnabled(boolean enabled) {
+                this.enabled = enabled;
+            }
+
+            public Duration getMonitoringInterval() {
+                return monitoringInterval;
+            }
+
+            public void setMonitoringInterval(Duration monitoringInterval) {
+                this.monitoringInterval = monitoringInterval;
+            }
+
+            public Duration getHealthCheckTimeout() {
+                return healthCheckTimeout;
+            }
+
+            public void setHealthCheckTimeout(Duration healthCheckTimeout) {
+                this.healthCheckTimeout = healthCheckTimeout;
+            }
+
+            public boolean isAlertEnabled() {
+                return alertEnabled;
+            }
+
+            public void setAlertEnabled(boolean alertEnabled) {
+                this.alertEnabled = alertEnabled;
+            }
+
+            public long getAlertThreshold() {
+                return alertThreshold;
+            }
+
+            public void setAlertThreshold(long alertThreshold) {
+                this.alertThreshold = alertThreshold;
+            }
+        }
+
+        /**
+         * 统计配置
+         */
+        public static class Statistics {
+            /**
+             * 是否启用统计
+             */
+            private boolean enabled = true;
+
+            /**
+             * 统计数据保留时间
+             */
+            private Duration retentionPeriod = Duration.ofDays(30);
+
+            /**
+             * 是否启用详细统计
+             */
+            private boolean detailedEnabled = false;
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public void setEnabled(boolean enabled) {
+                this.enabled = enabled;
+            }
+
+            public Duration getRetentionPeriod() {
+                return retentionPeriod;
+            }
+
+            public void setRetentionPeriod(Duration retentionPeriod) {
+                this.retentionPeriod = retentionPeriod;
+            }
+
+            public boolean isDetailedEnabled() {
+                return detailedEnabled;
+            }
+
+            public void setDetailedEnabled(boolean detailedEnabled) {
+                this.detailedEnabled = detailedEnabled;
+            }
         }
     }
 }

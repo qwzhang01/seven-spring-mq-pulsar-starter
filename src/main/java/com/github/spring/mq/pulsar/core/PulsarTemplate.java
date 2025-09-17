@@ -4,16 +4,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.config.PulsarInterceptorConfiguration;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
+import com.github.spring.mq.pulsar.domain.ListenerType;
 import com.github.spring.mq.pulsar.exception.JacksonException;
 import com.github.spring.mq.pulsar.exception.PulsarConsumeInitException;
 import com.github.spring.mq.pulsar.exception.PulsarConsumerNotExistException;
 import com.github.spring.mq.pulsar.exception.PulsarProducerInitException;
 import com.github.spring.mq.pulsar.interceptor.PulsarMessageInterceptor;
+import com.github.spring.mq.pulsar.listener.PulsarListenerContainer;
 import org.apache.logging.log4j.Logger;
 import org.apache.pulsar.client.api.*;
+import org.apache.pulsar.client.impl.MultiTopicsConsumerImpl;
 import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -245,7 +250,9 @@ public final class PulsarTemplate {
     }
 
     public Consumer<byte[]> getOrCreateConsumer(String consumerNameAnno,
-                                                PulsarProperties.Consumer consumer) {
+                                                PulsarProperties.Consumer consumer,
+                                                ListenerType listenerType,
+                                                Map<String, PulsarListenerContainer> listenerContainers) {
 
         return consumerCache.computeIfAbsent(consumer.getTopic(), t -> {
             String consumerName = StringUtils.hasText(consumerNameAnno) ? consumerNameAnno :
@@ -273,16 +280,29 @@ public final class PulsarTemplate {
                                 // 可以指定最大重试次数，最大重试三次后，进入到死信队列
                                 .maxRedeliverCount(consumer.getRetryTime())
                                 // 指定重试队列
-                                .retryLetterTopic(consumer.getRetryTopic());
+                                .retryLetterTopic("persistent://" + consumer.getRetryTopic());
 
                         consumerBuilder// 开启重试策略
                                 .enableRetry(true);
                     }
                     if (org.apache.commons.lang3.StringUtils.isNotBlank(consumer.getDeadTopic())) {
                         // 指定死信队列
-                        deadLetterPolicyBuilder.deadLetterTopic(consumer.getDeadTopic());
+                        deadLetterPolicyBuilder.deadLetterTopic("persistent://" + consumer.getDeadTopic());
                     }
                     consumerBuilder.deadLetterPolicy(deadLetterPolicyBuilder.build());
+                }
+                if (ListenerType.EVENT.equals(listenerType)) {
+                    consumerBuilder.messageListener(new MessageListener<byte[]>() {
+                        @Override
+                        public void received(Consumer<byte[]> consumer, Message<byte[]> msg) {
+                            buildListener(consumer, msg, listenerContainers);
+                        }
+
+                        @Override
+                        public void reachedEndOfTopic(Consumer<byte[]> consumer) {
+                            MessageListener.super.reachedEndOfTopic(consumer);
+                        }
+                    });
                 }
 
                 return consumerBuilder.subscribe();
@@ -290,6 +310,36 @@ public final class PulsarTemplate {
                 throw new PulsarConsumeInitException("Failed to create consumer for topic: " + consumer.getTopic(), e);
             }
         });
+    }
+
+    /*** 构建监听器 */
+    private void buildListener(Consumer<byte[]> consumer, Message<byte[]> message,
+                               Map<String, PulsarListenerContainer> listenerContainers) {
+        Map<String, String> topicUrlMap = new HashMap<>();
+        for (Map.Entry<String, PulsarProperties.Consumer> entry : pulsarProperties.getConsumerMap().entrySet()) {
+            topicUrlMap.put(entry.getValue().getTopic(), entry.getKey());
+            topicUrlMap.put(entry.getValue().getRetryTopic(), entry.getKey());
+        }
+
+        if (consumer instanceof MultiTopicsConsumerImpl) {
+            List<String> partitionedTopics = ((MultiTopicsConsumerImpl) consumer).getPartitionedTopics();
+            if (partitionedTopics != null && !partitionedTopics.isEmpty()) {
+                String topic = partitionedTopics.get(0);
+                topic = topic.replace("persistent://", "");
+                topic = topicUrlMap.get(topic.trim());
+                PulsarListenerContainer container = listenerContainers.get(topic);
+                if (container != null) {
+                    container.processMessage(consumer, message);
+                }
+                return;
+            }
+        }
+
+        String topic = topicUrlMap.get(consumer.getTopic());
+        PulsarListenerContainer container = listenerContainers.get(topic);
+        if (container != null) {
+            container.processMessage(consumer, message);
+        }
     }
 
     /**
@@ -314,14 +364,14 @@ public final class PulsarTemplate {
                         // 可以指定最大重试次数，最大重试三次后，进入到死信队列
                         .maxRedeliverCount(pulsarProperties.getConsumer().getRetryTime())
                         // 指定重试队列
-                        .retryLetterTopic(pulsarProperties.getConsumer().getRetryTopic());
+                        .retryLetterTopic("persistent://" + pulsarProperties.getConsumer().getRetryTopic());
 
                 consumerBuilder// 开启重试策略
                         .enableRetry(true);
             }
             if (org.apache.commons.lang3.StringUtils.isNotBlank(pulsarProperties.getConsumer().getDeadTopic())) {
                 // 指定死信队列
-                deadLetterPolicyBuilder.deadLetterTopic(pulsarProperties.getConsumer().getDeadTopic());
+                deadLetterPolicyBuilder.deadLetterTopic("persistent://" + pulsarProperties.getConsumer().getDeadTopic());
             }
             consumerBuilder.deadLetterPolicy(deadLetterPolicyBuilder.build());
         }

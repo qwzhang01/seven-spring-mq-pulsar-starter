@@ -1,6 +1,7 @@
 package com.github.spring.mq.pulsar.annotation;
 
 import com.github.spring.mq.pulsar.config.PulsarConfigurationSelector;
+import com.github.spring.mq.pulsar.domain.ListenerType;
 import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.*;
@@ -80,11 +81,18 @@ public @interface EnablePulsar {
      * 是否启用死信队列
      * 默认为 false，启用后会自动处理消费失败的消息
      */
-    boolean enableDeadLetterQueue() default true;
+    boolean enableDeadLetterQueue() default false;
 
     /**
      * 是否启用消息重试
      * 默认为 true，消费失败时会自动重试
      */
     boolean enableRetry() default true;
+
+    /**
+     * 监听器类型
+     * <p>
+     * 默认使用 监听器事件模式
+     */
+    ListenerType listenerType() default ListenerType.EVENT;
 }

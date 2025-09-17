@@ -1,6 +1,7 @@
 package com.github.spring.mq.pulsar.config;
 
 import com.github.spring.mq.pulsar.annotation.EnablePulsar;
+import com.github.spring.mq.pulsar.domain.ListenerType;
 import org.springframework.context.annotation.ImportSelector;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.type.AnnotationMetadata;
@@ -30,6 +31,14 @@ public class PulsarConfigurationSelector implements ImportSelector {
 
         // 基础配置始终导入
         imports.add(PulsarAutoConfiguration.class.getName());
+
+        // 消费者配置
+        if (ListenerType.EVENT.equals(attributes.getEnum("listenerType"))) {
+            imports.add(PulsarConsumerEventConfiguration.class.getName());
+        }
+        if (ListenerType.LOOP.equals(attributes.getEnum("listenerType"))) {
+            imports.add(PulsarConsumerLoopConfiguration.class.getName());
+        }
 
         // 根据注解配置导入相应的配置类
         if (attributes.getBoolean("enableTransaction")) {

@@ -374,8 +374,49 @@ public class PerformanceInterceptor implements PulsarMessageInterceptor {
 
 ### 死信队列处理
 
-```java
+### 死信队列配置
 
+在 `application.yml` 中配置死信队列：
+
+```yaml
+spring:
+  pulsar:
+    dead-letter:
+      topic-suffix: "-DLQ"                        # 死信队列主题后缀
+      max-retries: 3                              # 最大重试次数
+
+      # 重试配置
+      retry:
+        smart-strategy-enabled: true              # 是否启用智能重试策略
+        base-delay: PT1S                          # 基础重试延迟
+        max-delay: PT5M                           # 最大重试延迟
+        retry-window: PT24H                       # 重试时间窗口
+        jitter-enabled: true                      # 是否启用抖动
+        jitter-factor: 0.2                       # 抖动因子
+
+      # 清理配置
+      cleanup:
+        auto-cleanup-enabled: true                # 是否启用自动清理
+        message-expiration: P7D                   # 消息过期时间
+        cleanup-cron: "0 0 2 * * ?"              # 清理执行时间
+
+      # 监控配置
+      monitoring:
+        enabled: true                             # 是否启用监控
+        monitoring-interval: PT5M                 # 监控间隔
+        alert-enabled: false                      # 是否启用告警
+        alert-threshold: 100                      # 告警阈值
+
+      # 统计配置
+      statistics:
+        enabled: true                             # 是否启用统计
+        retention-period: P30D                    # 统计数据保留时间
+        detailed-enabled: false                   # 是否启用详细统计
+```
+
+### 死信队列处理器
+
+```java
 @Component
 public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
 
@@ -408,6 +449,208 @@ public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
     @Override
     public int getMaxRetries() {
         return 5; // 自定义最大重试次数
+    }
+}
+```
+
+### 死信队列管理
+
+#### REST API 管理
+
+```java
+@RestController
+@RequestMapping("/api/dead-letter")
+public class DeadLetterController {
+
+    @Autowired
+    private DeadLetterQueueManager deadLetterQueueManager;
+
+    // 获取死信队列统计信息
+    @GetMapping("/statistics")
+    public ResponseEntity<Map<String, Object>> getStatistics() {
+        // 实现统计信息获取
+    }
+
+    // 读取死信消息
+    @GetMapping("/queues/{topic}/messages")
+    public ResponseEntity<List<DeadLetterMessage>> readMessages(
+            @PathVariable String topic,
+            @RequestParam(defaultValue = "10") int maxMessages) {
+        // 实现消息读取
+    }
+
+    // 重新处理死信消息
+    @PostMapping("/reprocess")
+    public ResponseEntity<Map<String, Object>> reprocessMessage(
+            @RequestBody ReprocessRequest request) {
+        // 实现消息重新处理
+    }
+
+    // 清理过期消息
+    @PostMapping("/queues/{topic}/cleanup")
+    public ResponseEntity<Map<String, Object>> cleanupExpiredMessages(
+            @PathVariable String topic,
+            @RequestParam(defaultValue = "7") int expirationDays) {
+        // 实现消息清理
+    }
+}
+```
+
+#### 编程式管理
+
+```java
+@Service
+public class DeadLetterManagementService {
+
+    @Autowired
+    private DeadLetterQueueManager deadLetterQueueManager;
+
+    @Autowired
+    private DeadLetterMessageProcessor deadLetterMessageProcessor;
+
+    // 监控死信队列
+    public void monitorDeadLetterQueues() {
+        List<DeadLetterQueueInfo> queueInfoList = deadLetterQueueManager.getAllQueueInfo();
+        
+        for (DeadLetterQueueInfo queueInfo : queueInfoList) {
+            if (queueInfo.getMessageCount() > 100) {
+                // 发送告警
+                sendAlert("Dead letter queue " + queueInfo.getTopicName() + 
+                         " has " + queueInfo.getMessageCount() + " messages");
+            }
+        }
+    }
+
+    // 批量重新处理死信消息
+    public void batchReprocessMessages(String deadLetterTopic) {
+        List<DeadLetterMessage> messages = deadLetterQueueManager
+                .readDeadLetterMessages(deadLetterTopic, 50);
+        
+        BatchReprocessResult result = deadLetterMessageProcessor
+                .batchReprocessDeadLetterMessages(messages, getOriginalTopic(deadLetterTopic));
+        
+        log.info("Batch reprocess result: success={}, failed={}", 
+                result.getSuccessCount(), result.getFailureCount());
+    }
+
+    // 定期清理过期消息
+    @Scheduled(cron = "0 0 2 * * ?") // 每天凌晨2点执行
+    public void cleanupExpiredMessages() {
+        List<DeadLetterQueueInfo> queueInfoList = deadLetterQueueManager.getAllQueueInfo();
+        
+        for (DeadLetterQueueInfo queueInfo : queueInfoList) {
+            int cleanedCount = deadLetterQueueManager
+                    .cleanupExpiredMessages(queueInfo.getTopicName(), 7);
+            
+            if (cleanedCount > 0) {
+                log.info("Cleaned {} expired messages from {}", 
+                        cleanedCount, queueInfo.getTopicName());
+            }
+        }
+    }
+}
+```
+
+### 死信队列最佳实践
+
+#### 1. 异常分类处理
+
+```java
+@Component
+public class SmartDeadLetterHandler implements DeadLetterQueueHandler {
+
+    @Override
+    public boolean shouldSendToDeadLetter(Message<?> message, Exception exception, int retryCount) {
+        // 业务异常不重试，直接进入死信队列
+        if (exception instanceof BusinessException) {
+            return true;
+        }
+        
+        // 系统异常根据重试次数决定
+        if (exception instanceof SystemException) {
+            return retryCount >= getMaxRetries();
+        }
+        
+        // 网络异常增加重试次数
+        if (exception instanceof NetworkException) {
+            return retryCount >= (getMaxRetries() * 2);
+        }
+        
+        return retryCount >= getMaxRetries();
+    }
+
+    @Override
+    public String getDeadLetterTopic(String originalTopic) {
+        // 根据主题类型使用不同的死信队列策略
+        if (originalTopic.startsWith("critical-")) {
+            return "critical-dlq"; // 关键业务使用专用死信队列
+        } else if (originalTopic.startsWith("batch-")) {
+            return "batch-dlq"; // 批处理使用专用死信队列
+        } else {
+            return originalTopic + "-dlq"; // 默认策略
+        }
+    }
+}
+```
+
+#### 2. 死信消息分析
+
+```java
+@Service
+public class DeadLetterAnalysisService {
+
+    // 分析死信消息模式
+    public DeadLetterAnalysisReport analyzeDeadLetterPatterns() {
+        DeadLetterStatistics stats = deadLetterQueueHandler.getStatistics();
+        
+        DeadLetterAnalysisReport report = new DeadLetterAnalysisReport();
+        
+        // 分析各主题的死信率
+        for (Map.Entry<String, Long> entry : stats.getTopicDeadLetterCount().entrySet()) {
+            String topic = entry.getKey();
+            Long deadLetterCount = entry.getValue();
+            
+            // 计算死信率
+            long totalMessages = getTotalMessageCount(topic);
+            double deadLetterRate = (double) deadLetterCount / totalMessages * 100;
+            
+            if (deadLetterRate > 5.0) { // 死信率超过5%
+                report.addHighRiskTopic(topic, deadLetterRate);
+            }
+        }
+        
+        return report;
+    }
+
+    // 生成死信处理建议
+    public List<String> generateRecommendations(String deadLetterTopic) {
+        List<DeadLetterMessage> messages = deadLetterQueueManager
+                .readDeadLetterMessages(deadLetterTopic, 100);
+        
+        Map<String, Integer> exceptionCounts = new HashMap<>();
+        
+        for (DeadLetterMessage message : messages) {
+            String exceptionClass = message.getExceptionClass();
+            exceptionCounts.merge(exceptionClass, 1, Integer::sum);
+        }
+        
+        List<String> recommendations = new ArrayList<>();
+        
+        // 根据异常类型生成建议
+        for (Map.Entry<String, Integer> entry : exceptionCounts.entrySet()) {
+            String exceptionClass = entry.getKey();
+            Integer count = entry.getValue();
+            
+            if (exceptionClass.contains("TimeoutException") && count > 10) {
+                recommendations.add("考虑增加消息处理超时时间或优化处理逻辑");
+            } else if (exceptionClass.contains("ValidationException") && count > 5) {
+                recommendations.add("检查消息格式验证逻辑，可能存在数据质量问题");
+            } else if (exceptionClass.contains("DatabaseException") && count > 3) {
+                recommendations.add("检查数据库连接和性能，考虑增加重试机制");
+            }
+        }
+        
+        return recommendations;
     }
 }
 ```

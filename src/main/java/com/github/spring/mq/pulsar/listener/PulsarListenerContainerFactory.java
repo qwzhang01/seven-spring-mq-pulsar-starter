@@ -37,7 +37,7 @@ public class PulsarListenerContainerFactory {
                                                    PulsarListener annotation) {
         if (containerCache.containsKey(annotation.topic())) {
             PulsarListenerContainer container = containerCache.get(annotation.topic());
-            container.addMethod(annotation, method);
+            container.addMethod(bean, method, annotation);
             return container;
         }
 
@@ -47,6 +47,9 @@ public class PulsarListenerContainerFactory {
             consumerProperty = pulsarProperties.getConsumer();
         } else {
             consumerProperty = consumerMap.get(annotation.topic());
+        }
+        if (consumerProperty == null) {
+            consumerProperty = pulsarProperties.getConsumer();
         }
         if (consumerProperty == null) {
             throw new IllegalArgumentException("consumer property is null");
@@ -61,9 +64,9 @@ public class PulsarListenerContainerFactory {
 
         PulsarListenerContainer container = new PulsarListenerContainer(consumer,
                 bean,
-                annotation.businessPath(),
+                annotation.msgRoute(),
                 method,
-                annotation.businessKey(),
+                annotation.routeKey(),
                 annotation.dataKey(),
                 consumerProperty.isAutoAck(),
                 annotation.messageType(),

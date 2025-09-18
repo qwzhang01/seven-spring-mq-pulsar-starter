@@ -39,6 +39,7 @@ public class PulsarConfigurationSelector implements ImportSelector {
         if (ListenerType.LOOP.equals(attributes.getEnum("listenerType"))) {
             imports.add(PulsarConsumerLoopConfiguration.class.getName());
         }
+        imports.add(PulsarDeadLetterConfiguration.class.getName());
 
         // 根据注解配置导入相应的配置类
         if (attributes.getBoolean("enableTransaction")) {
@@ -60,15 +61,6 @@ public class PulsarConfigurationSelector implements ImportSelector {
         if (attributes.getBoolean("enablePerformanceInterceptor")) {
             imports.add(PulsarPerformanceInterceptorConfiguration.class.getName());
         }
-
-        if (attributes.getBoolean("enableDeadLetterQueue")) {
-            imports.add(PulsarDeadLetterConfiguration.class.getName());
-        }
-
-        if (attributes.getBoolean("enableRetry")) {
-            imports.add(PulsarRetryConfiguration.class.getName());
-        }
-
         return imports.toArray(new String[0]);
     }
 }

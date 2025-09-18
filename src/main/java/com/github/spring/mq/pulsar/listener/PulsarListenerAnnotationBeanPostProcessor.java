@@ -13,8 +13,7 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Pulsar 监听器注解处理器
@@ -39,23 +38,6 @@ import java.util.List;
  * 6. 应用关闭时调用 destroy() 方法清理资源
  * </pre>
  *
- * <p>使用示例：
- * <pre>
- * &#64;Service
- * public class MessageHandler {
- *
- *     &#64;PulsarListener(topic = "user-events", subscription = "user-service")
- *     public void handleUserEvent(UserEvent event) {
- *         // 处理用户事件
- *     }
- *
- *     &#64;PulsarListener(topic = "order-events", subscription = "order-service")
- *     public void handleOrderEvent(OrderEvent event) {
- *         // 处理订单事件
- *     }
- * }
- * </pre>
- *
  * @author avinzhang
  * @see BeanPostProcessor Spring Bean 后置处理器接口
  * @see BeanFactoryAware 用于获取 BeanFactory 引用
@@ -75,9 +57,9 @@ public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProces
 
     /**
      * 存储所有创建的监听器容器
-     * 用于在应用关闭时统一管理和清理资源
+     * 一个 topic，也即一个 Consume，一个监听器
      */
-    private final List<PulsarListenerContainer> containers = new ArrayList<>();
+    private final ConcurrentHashMap<String, PulsarListenerContainer> containers = new ConcurrentHashMap<>();
 
     /**
      * Spring Bean 工厂引用
@@ -163,19 +145,24 @@ public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProces
      */
     private void processListenerMethod(Object bean, Method method, PulsarListener annotation) {
         try {
-            // 通过工厂创建监听器容器
-            // 容器会封装 Pulsar Consumer 和消息处理逻辑
-            PulsarListenerContainer container = containerFactory.createContainer(bean, method, annotation);
-            if (!containers.contains(container)) {
-                // 将容器添加到管理列表，用于后续的生命周期管理
-                containers.add(container);
+            PulsarListenerContainer container = containers.get(annotation.topic());
+            if (container == null) {
+                // 通过工厂创建监听器容器
+                // 容器会封装 Pulsar Consumer 和消息处理逻辑
+                container = containerFactory.createContainer(bean, method, annotation);
+                if (!containers.contains(container)) {
+                    // 将容器添加到管理列表，用于后续的生命周期管理
+                    containers.put(annotation.topic(), container);
 
-                // 启动容器，开始监听指定 topic 的消息
-                container.start();
+                    // 启动容器，开始监听指定 topic 的消息
+                    container.start();
 
-                // 记录成功创建监听器的日志
-                logger.info("Created Pulsar listener for method: {} on topic: {}",
-                        method.getName(), annotation.topic());
+                    // 记录成功创建监听器的日志
+                    logger.info("Created Pulsar listener for method: {} on topic: {}",
+                            method.getName(), annotation.topic());
+                }
+            } else {
+                container.addMethod(bean, method, annotation);
             }
         } catch (Exception e) {
             // 记录错误日志并抛出运行时异常
@@ -202,20 +189,18 @@ public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProces
      *   <li>线程资源被清理</li>
      *   <li>避免资源泄漏</li>
      * </ul>
-     *
-     * @throws Exception 如果清理过程中出现异常
      */
     @Override
-    public void destroy() throws Exception {
+    public void destroy() {
         logger.info("Destroying {} Pulsar listener containers", containers.size());
 
         // 停止所有监听器容器
-        for (PulsarListenerContainer container : containers) {
+        for (PulsarListenerContainer container : containers.values()) {
             try {
                 container.stop();
                 logger.debug("Stopped Pulsar listener container: {}", container);
             } catch (Exception e) {
-                logger.warn("Failed to stop Pulsar listener container: " + container, e);
+                logger.warn("Failed to stop Pulsar listener container: {}", container, e);
             }
         }
 

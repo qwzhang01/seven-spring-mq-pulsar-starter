@@ -1,8 +1,6 @@
 package com.github.spring.mq.pulsar.core;
 
-import com.github.spring.mq.pulsar.exception.PulsarProducerSendException;
 import org.apache.pulsar.client.api.MessageId;
-import org.apache.pulsar.client.api.PulsarClientException;
 import org.springframework.util.StringUtils;
 
 import java.util.concurrent.CompletableFuture;
@@ -14,13 +12,13 @@ import java.util.concurrent.TimeUnit;
  * @author avinzhang
  * @since 1.0.0
  */
-public class DefaultMultipleMessageSender implements MultipleMessageSender {
-    private PulsarTemplate pulsarTemplate;
+public class DefaultTopicMessageSender implements TopicMessageSender {
+    private PulsarMessageSender pulsarMessageSender;
     private String topic;
 
     @Override
-    public void setPulsarTemplate(PulsarTemplate pulsarTemplate) {
-        this.pulsarTemplate = pulsarTemplate;
+    public void setPulsarMessageSender(PulsarMessageSender pulsarMessageSender) {
+        this.pulsarMessageSender = pulsarMessageSender;
     }
 
     @Override
@@ -32,21 +30,13 @@ public class DefaultMultipleMessageSender implements MultipleMessageSender {
     @Override
     public MessageId send(Object message) {
         validTopic();
-        try {
-            return pulsarTemplate.send(topic, message);
-        } catch (PulsarClientException e) {
-            throw new PulsarProducerSendException("Failed to send message", e);
-        }
+        return pulsarMessageSender.send(topic, message);
     }
 
     @Override
     public MessageId send(String key, Object message) {
         validTopic();
-        try {
-            return pulsarTemplate.send(topic, key, message);
-        } catch (PulsarClientException e) {
-            throw new PulsarProducerSendException("Failed to send message to topic: " + topic, e);
-        }
+        return pulsarMessageSender.send(topic, key, message);
     }
 
 
@@ -59,33 +49,25 @@ public class DefaultMultipleMessageSender implements MultipleMessageSender {
             future.completeExceptionally(new IllegalStateException("Default topic is not configured"));
             return future;
         }
-        return pulsarTemplate.sendAsync(defaultTopic, message);
+        return pulsarMessageSender.sendAsync(defaultTopic, message);
     }
 
     @Override
     public CompletableFuture<MessageId> sendAsync(String key, Object message) {
         validTopic();
-        return pulsarTemplate.sendAsync(topic, key, message);
+        return pulsarMessageSender.sendAsync(topic, key, message);
     }
 
     @Override
     public MessageId sendAfter(Object message, long delay, TimeUnit unit) {
         validTopic();
-        try {
-            return pulsarTemplate.sendAfter(topic, message, delay, unit);
-        } catch (PulsarClientException e) {
-            throw new PulsarProducerSendException("Failed to send message to topic: " + topic, e);
-        }
+        return pulsarMessageSender.sendAfter(topic, message, delay, unit);
     }
 
     @Override
     public MessageId sendAt(Object message, long timestamp) {
         validTopic();
-        try {
-            return pulsarTemplate.sendAt(topic, message, timestamp);
-        } catch (PulsarClientException e) {
-            throw new PulsarProducerSendException("Failed to send message to topic: " + topic, e);
-        }
+        return pulsarMessageSender.sendAt(topic, message, timestamp);
     }
 
     private void validTopic() {

@@ -10,11 +10,14 @@ import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
-import com.github.spring.mq.pulsar.core.DefaultMultipleMessageSender;
 import com.github.spring.mq.pulsar.core.DefaultPulsarMessageSender;
+import com.github.spring.mq.pulsar.core.DefaultTopicMessageSender;
 import com.github.spring.mq.pulsar.core.PulsarMessageSender;
 import com.github.spring.mq.pulsar.core.PulsarTemplate;
 import com.github.spring.mq.pulsar.exception.PulsarClientInitException;
+import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
+import com.github.spring.mq.pulsar.listener.PulsarListenerAnnotationBeanPostProcessor;
+import com.github.spring.mq.pulsar.listener.PulsarListenerContainerFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.pulsar.client.api.ClientBuilder;
@@ -104,10 +107,13 @@ public class PulsarAutoConfiguration {
     /**
      * 创建 Pulsar 模板
      */
-    @Bean
+    @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean
-    public PulsarTemplate pulsarTemplate(PulsarClient pulsarClient, ObjectMapper objectMapper, PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry) {
-        PulsarTemplate template = new PulsarTemplate(pulsarClient, pulsarProperties, objectMapper);
+    public PulsarTemplate pulsarTemplate(PulsarClient pulsarClient, ObjectMapper objectMapper,
+                                         PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry,
+                                         DeadLetterMessageProcessor deadLetterMessageProcessor) {
+        PulsarTemplate template = new PulsarTemplate(pulsarClient, pulsarProperties,
+                objectMapper, deadLetterMessageProcessor);
         template.setInterceptorRegistry(interceptorRegistry);
         return template;
     }
@@ -123,17 +129,13 @@ public class PulsarAutoConfiguration {
 
     /**
      * 创建多生产者 Bean 注册器
-     *
-     * @param pulsarTemplate
-     * @param applicationContext
-     * @return
      */
     @Bean
     @ConditionalOnMissingBean
-    public MultipleProducerBeanRegistrar multipleProducerBeanRegistrar(PulsarTemplate pulsarTemplate, ApplicationContext applicationContext) {
+    public MultipleProducerBeanRegistrar multipleProducerBeanRegistrar(PulsarMessageSender pulsarMessageSender) {
         MultipleProducerBeanRegistrar multipleProducerBeanRegistrar = new MultipleProducerBeanRegistrar();
         multipleProducerBeanRegistrar.setPulsarProperties(pulsarProperties);
-        multipleProducerBeanRegistrar.setPulsarTemplate(pulsarTemplate);
+        multipleProducerBeanRegistrar.setPulsarMessageSender(pulsarMessageSender);
         return multipleProducerBeanRegistrar;
     }
 
@@ -176,16 +178,25 @@ public class PulsarAutoConfiguration {
     }
 
     /**
+     * 创建监听器注解处理器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public PulsarListenerAnnotationBeanPostProcessor pulsarListenerAnnotationBeanPostProcessor(PulsarListenerContainerFactory containerFactory) {
+        return new PulsarListenerAnnotationBeanPostProcessor(containerFactory);
+    }
+
+    /**
      * 多生产者 Bean 注册器
      */
     public static class MultipleProducerBeanRegistrar implements ApplicationContextAware, InitializingBean {
 
         private ApplicationContext applicationContext;
         private PulsarProperties pulsarProperties;
-        private PulsarTemplate pulsarTemplate;
+        private PulsarMessageSender pulsarMessageSender;
 
-        public void setPulsarTemplate(PulsarTemplate pulsarTemplate) {
-            this.pulsarTemplate = pulsarTemplate;
+        public void setPulsarMessageSender(PulsarMessageSender pulsarMessageSender) {
+            this.pulsarMessageSender = pulsarMessageSender;
         }
 
         public void setPulsarProperties(PulsarProperties pulsarProperties) {
@@ -207,9 +218,9 @@ public class PulsarAutoConfiguration {
                     for (Map.Entry<String, PulsarProperties.Producer> entry : producerMap.entrySet()) {
                         String beanName = entry.getKey();
                         PulsarProperties.Producer config = entry.getValue();
-                        beanFactory.registerBeanDefinition(beanName, BeanDefinitionBuilder.genericBeanDefinition(DefaultMultipleMessageSender.class, () -> {
-                            DefaultMultipleMessageSender sender = new DefaultMultipleMessageSender();
-                            sender.setPulsarTemplate(pulsarTemplate);
+                        beanFactory.registerBeanDefinition(beanName, BeanDefinitionBuilder.genericBeanDefinition(DefaultTopicMessageSender.class, () -> {
+                            DefaultTopicMessageSender sender = new DefaultTopicMessageSender();
+                            sender.setPulsarMessageSender(pulsarMessageSender);
                             sender.setTopic(config.getTopic());
                             return sender;
                         }).getBeanDefinition());

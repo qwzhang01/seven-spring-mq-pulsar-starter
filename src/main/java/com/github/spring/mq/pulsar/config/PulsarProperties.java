@@ -292,6 +292,9 @@ public class PulsarProperties {
          */
         private String subscriptionInitialPosition = "Earliest";
         private boolean autoAck = true;
+        /**
+         * 最大重试次数，超过后进入死信队列
+         */
         private int retryTime = 3;
         /**
          * 没有Ack的消息，默认30秒后重新消费

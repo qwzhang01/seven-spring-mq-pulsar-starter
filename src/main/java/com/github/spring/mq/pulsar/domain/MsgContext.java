@@ -78,21 +78,21 @@ public class MsgContext {
         context.setRequestId(requestId);
     }
 
-    public static String getBusinessPath() {
+    public static String getMsgRoute() {
         Context context = HOLDER.get();
         if (context == null) {
             return null;
         }
-        return context.getBusinessPath();
+        return context.getMsgRoute();
     }
 
-    public static void setBusinessPath(String businessPath) {
+    public static void setMsgRoute(String businessPath) {
         Context context = HOLDER.get();
         if (context == null) {
             context = new Context();
             HOLDER.set(context);
         }
-        context.setBusinessPath(businessPath);
+        context.setMsgRoute(businessPath);
     }
 
     public static void remove() {
@@ -104,7 +104,7 @@ public class MsgContext {
         private String appName;
         private String requestId;
         private LocalDateTime time;
-        private String businessPath;
+        private String msgRoute;
 
         public String getAppName() {
             return appName;
@@ -138,12 +138,12 @@ public class MsgContext {
             this.corpKey = corpKey;
         }
 
-        public String getBusinessPath() {
-            return businessPath;
+        public String getMsgRoute() {
+            return msgRoute;
         }
 
-        public void setBusinessPath(String businessPath) {
-            this.businessPath = businessPath;
+        public void setMsgRoute(String msgRoute) {
+            this.msgRoute = msgRoute;
         }
     }
 }

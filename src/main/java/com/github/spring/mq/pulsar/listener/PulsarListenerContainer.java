@@ -28,8 +28,11 @@ public class PulsarListenerContainer {
     private static final Logger logger = LoggerFactory.getLogger(PulsarListenerContainer.class);
 
     private final Consumer<byte[]> consumer;
-    private final Object bean;
-
+    /**
+     * 处理器容器
+     * key: 消息 route
+     * value:消息 handler
+     */
     private final ConcurrentHashMap<String, Handler> handlerMap = new ConcurrentHashMap<>();
 
     private final boolean autoAck;
@@ -41,22 +44,25 @@ public class PulsarListenerContainer {
     private final ListenerType listenerType;
 
     private volatile boolean running = false;
-    private Map<String, String> businessMap = null;
+    /**
+     * key 消息路由
+     * value routeKey
+     */
+    private Map<String, String> routeToKey = null;
 
 
     public PulsarListenerContainer(Consumer<byte[]> consumer,
                                    Object bean,
-                                   String businessPath,
+                                   String route,
                                    Method method,
-                                   String businessKey,
+                                   String routeKey,
                                    String dataKey,
                                    boolean autoAck,
                                    Class<?> messageType,
                                    PulsarTemplate pulsarTemplate,
                                    ListenerType listenerType) {
         this.consumer = consumer;
-        this.bean = bean;
-        this.handlerMap.put(businessPath, new Handler(businessKey, dataKey, method, messageType));
+        this.handlerMap.put(route, new Handler(routeKey, dataKey, bean, method, messageType));
         this.autoAck = autoAck;
         this.pulsarTemplate = pulsarTemplate;
         this.listenerType = listenerType;
@@ -65,7 +71,6 @@ public class PulsarListenerContainer {
             thread.setDaemon(true);
             return thread;
         });
-
     }
 
     /**
@@ -145,7 +150,7 @@ public class PulsarListenerContainer {
                 return;
             }
 
-            String msgRoute = pulsarTemplate.deserializeMsgRoute(message.getData(), getBusinessMap());
+            String msgRoute = pulsarTemplate.deserializeMsgRoute(message.getData(), getRouteToKey());
             Handler handler = this.handlerMap.get(msgRoute);
             if (handler == null) {
                 throw new UnsupportedOperationException(msgRoute + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
@@ -172,7 +177,7 @@ public class PulsarListenerContainer {
                 args = new Object[]{};
             }
 
-            method.invoke(bean, args);
+            method.invoke(handler.bean, args);
 
             // 自动确认消息
             if (autoAck && consumer.isConnected()) {
@@ -198,12 +203,7 @@ public class PulsarListenerContainer {
         }
     }
 
-    /**
-     * 忽略格式错误，无法解析的消息
-     *
-     * @param consumer
-     * @param message
-     */
+    /*** 忽略格式错误，无法解析的消息 */
     private void ignore(Consumer<byte[]> consumer, Message<byte[]> message) {
         if (consumer.isConnected()) {
             try {
@@ -224,26 +224,25 @@ public class PulsarListenerContainer {
         }
     }
 
-    public void addMethod(PulsarListener annotation,
-                          Method method) {
-        this.handlerMap.put(annotation.businessPath(),
-                new Handler(annotation.businessKey(),
+    public void addMethod(Object bean, Method method,
+                          PulsarListener annotation) {
+        this.handlerMap.put(annotation.msgRoute(),
+                new Handler(annotation.routeKey(),
                         annotation.dataKey(),
-                        method,
+                        bean, method,
                         annotation.messageType()));
     }
 
-    private Map<String, String> getBusinessMap() {
-        if (businessMap != null) {
-            return businessMap;
+    /*** 根据 路由 获取 路由的key */
+    private Map<String, String> getRouteToKey() {
+        if (routeToKey != null) {
+            return routeToKey;
         }
-        this.businessMap = handlerMap.entrySet().stream()
-                .collect(Collectors.toMap(
+        this.routeToKey = handlerMap.entrySet()
+                .stream().collect(Collectors.toMap(
                         Map.Entry::getKey,
-                        entry -> entry.getValue().msgRouteKey
-                ));
-
-        return businessMap;
+                        entry -> entry.getValue().msgRouteKey));
+        return routeToKey;
     }
 
     /**
@@ -254,6 +253,9 @@ public class PulsarListenerContainer {
      * @param method      方法 映射key 到 method
      * @param messageType 消息类型
      */
-    private record Handler(String msgRouteKey, String dataKey, Method method, Class<?> messageType) {
+    private record Handler(String msgRouteKey, String dataKey,
+                           Object bean,
+                           Method method,
+                           Class<?> messageType) {
     }
 }

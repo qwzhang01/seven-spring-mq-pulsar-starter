@@ -5,11 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.config.PulsarInterceptorConfiguration;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
 import com.github.spring.mq.pulsar.domain.ListenerType;
-import com.github.spring.mq.pulsar.exception.JacksonException;
-import com.github.spring.mq.pulsar.exception.PulsarConsumeInitException;
-import com.github.spring.mq.pulsar.exception.PulsarConsumerNotExistException;
-import com.github.spring.mq.pulsar.exception.PulsarProducerInitException;
+import com.github.spring.mq.pulsar.exception.*;
 import com.github.spring.mq.pulsar.interceptor.PulsarMessageInterceptor;
+import com.github.spring.mq.pulsar.listener.DeadLetterListenerContainer;
+import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
 import com.github.spring.mq.pulsar.listener.PulsarListenerContainer;
 import org.apache.logging.log4j.Logger;
 import org.apache.pulsar.client.api.*;
@@ -17,10 +16,7 @@ import org.apache.pulsar.client.impl.MultiTopicsConsumerImpl;
 import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -37,15 +33,20 @@ public final class PulsarTemplate {
     private final PulsarClient pulsarClient;
     private final PulsarProperties pulsarProperties;
     private final ObjectMapper objectMapper;
+    private final DeadLetterMessageProcessor deadLetterMessageProcessor;
     private final ConcurrentHashMap<String, Producer<byte[]>> producerCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Consumer<byte[]>> consumerCache = new ConcurrentHashMap<>();
+    private final List<DeadLetterListenerContainer> deadLetterListenerContainers = new ArrayList<>();
 
     private PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry;
 
-    public PulsarTemplate(PulsarClient pulsarClient, PulsarProperties pulsarProperties, ObjectMapper objectMapper) {
+    public PulsarTemplate(PulsarClient pulsarClient, PulsarProperties pulsarProperties,
+                          ObjectMapper objectMapper,
+                          DeadLetterMessageProcessor deadLetterMessageProcessor) {
         this.pulsarClient = pulsarClient;
         this.pulsarProperties = pulsarProperties;
         this.objectMapper = objectMapper;
+        this.deadLetterMessageProcessor = deadLetterMessageProcessor;
     }
 
     public void setInterceptorRegistry(PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry) {
@@ -153,12 +154,6 @@ public final class PulsarTemplate {
 
     /**
      * 发送延时消息
-     *
-     * @param topic
-     * @param message
-     * @param timestamp
-     * @return
-     * @throws PulsarClientException
      */
     public MessageId sendAt(String topic, Object message, long timestamp) throws PulsarClientException {
         return sendAt(topic, null, message, timestamp);
@@ -166,13 +161,6 @@ public final class PulsarTemplate {
 
     /**
      * 发送延时消息
-     *
-     * @param topic
-     * @param key
-     * @param message
-     * @param timestamp
-     * @return
-     * @throws PulsarClientException
      */
     public MessageId sendAt(String topic, String key, Object message, long timestamp) throws PulsarClientException {
         // 执行发送前拦截器
@@ -214,19 +202,17 @@ public final class PulsarTemplate {
         return sendAsync(topic, null, message);
     }
 
-    /**
-     * 异步发送消息（带key）
-     */
+    /*** 异步发送消息（带key） */
     public CompletableFuture<MessageId> sendAsync(String topic, String key, Object message) {
-        try {
-            // 执行发送前拦截器
-            Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
-            if (interceptedMessage == null) {
-                CompletableFuture<MessageId> future = new CompletableFuture<>();
-                future.complete(null);
-                return future;
-            }
+        // 执行发送前拦截器
+        Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
+        if (interceptedMessage == null) {
+            CompletableFuture<MessageId> future = new CompletableFuture<>();
+            future.complete(null);
+            return future;
+        }
 
+        try {
             Producer<byte[]> producer = getOrCreateProducer(topic);
             TypedMessageBuilder<byte[]> messageBuilder = producer.newMessage()
                     .value(serialize(interceptedMessage));
@@ -288,6 +274,7 @@ public final class PulsarTemplate {
                     if (org.apache.commons.lang3.StringUtils.isNotBlank(consumer.getDeadTopic())) {
                         // 指定死信队列
                         deadLetterPolicyBuilder.deadLetterTopic("persistent://" + consumer.getDeadTopic());
+                        buildDeadLetterConsumer(consumer.getDeadTopic());
                     }
                     consumerBuilder.deadLetterPolicy(deadLetterPolicyBuilder.build());
                 }
@@ -342,57 +329,40 @@ public final class PulsarTemplate {
         }
     }
 
-    /**
-     * 创建消费者
-     */
-    public Consumer<byte[]> createConsumer(String topic, String subscriptionName) throws PulsarClientException {
-        ConsumerBuilder<byte[]> consumerBuilder = pulsarClient.newConsumer()
-                .topic("persistent://" + topic)
-                .subscriptionType(SubscriptionType.valueOf(pulsarProperties.getConsumer().getSubscriptionType()))
-                .subscriptionName(subscriptionName)
-                .subscriptionInitialPosition(SubscriptionInitialPosition.valueOf(pulsarProperties.getConsumer().getSubscriptionInitialPosition()))
-                .ackTimeout(pulsarProperties.getConsumer().getAckTimeout().toMillis(), TimeUnit.MILLISECONDS)
-                .receiverQueueSize(pulsarProperties.getConsumer().getReceiverQueueSize())
-                .negativeAckRedeliveryDelay(pulsarProperties.getConsumer().getNegativeAckRedeliveryDelay(), TimeUnit.MILLISECONDS)
-                .autoAckOldestChunkedMessageOnQueueFull(pulsarProperties.getConsumer().isAutoAckOldestChunkedMessageOnQueueFull());
-
-        if (StringUtils.hasText(pulsarProperties.getConsumer().getRetryTopic())
-                || StringUtils.hasText(pulsarProperties.getConsumer().getDeadTopic())) {
-            DeadLetterPolicy.DeadLetterPolicyBuilder deadLetterPolicyBuilder = DeadLetterPolicy.builder();
-            if (org.apache.commons.lang3.StringUtils.isNotBlank(pulsarProperties.getConsumer().getRetryTopic())) {
-                deadLetterPolicyBuilder
-                        // 可以指定最大重试次数，最大重试三次后，进入到死信队列
-                        .maxRedeliverCount(pulsarProperties.getConsumer().getRetryTime())
-                        // 指定重试队列
-                        .retryLetterTopic("persistent://" + pulsarProperties.getConsumer().getRetryTopic());
-
-                consumerBuilder// 开启重试策略
-                        .enableRetry(true);
-            }
-            if (org.apache.commons.lang3.StringUtils.isNotBlank(pulsarProperties.getConsumer().getDeadTopic())) {
-                // 指定死信队列
-                deadLetterPolicyBuilder.deadLetterTopic("persistent://" + pulsarProperties.getConsumer().getDeadTopic());
-            }
-            consumerBuilder.deadLetterPolicy(deadLetterPolicyBuilder.build());
+    /*** 构建死信消费者 */
+    private void buildDeadLetterConsumer(String deadTopic) {
+        try {
+            Consumer<byte[]> consumer = createConsumer(deadTopic);
+            DeadLetterListenerContainer container = new DeadLetterListenerContainer(consumer, deadLetterMessageProcessor);
+            deadLetterListenerContainers.add(container);
+            container.start();
+        } catch (Exception e) {
+            logger.error("构建死信队列监听器异常", e);
         }
-
-        return consumerBuilder.subscribe();
     }
 
-    /**
-     * 获取或创建生产者
-     */
-    public Producer<byte[]> getOrCreateProducer(String topic) throws PulsarClientException {
+    /*** 创建消费者 */
+    private Consumer<byte[]> createConsumer(String topic) throws PulsarClientException {
+        return pulsarClient.newConsumer()
+                .topic("persistent://" + topic)
+                .subscriptionType(SubscriptionType.Shared)
+                .subscriptionInitialPosition(SubscriptionInitialPosition.Earliest)
+                .subscribe();
+    }
+
+    /*** 获取或创建生产者 */
+    private Producer<byte[]> getOrCreateProducer(String topic) {
         return producerCache.computeIfAbsent(topic, t -> {
             try {
+                PulsarProperties.Producer producerConfig = getProducer(topic);
                 return pulsarClient.newProducer()
-                        .topic(t)
-                        .sendTimeout((int) pulsarProperties.getProducer().getSendTimeout().toMillis(), TimeUnit.MILLISECONDS)
-                        .blockIfQueueFull(pulsarProperties.getProducer().isBlockIfQueueFull())
-                        .maxPendingMessages(pulsarProperties.getProducer().getMaxPendingMessages())
-                        .enableBatching(pulsarProperties.getProducer().isBatchingEnabled())
-                        .batchingMaxMessages(pulsarProperties.getProducer().getBatchingMaxMessages())
-                        .batchingMaxPublishDelay((int) pulsarProperties.getProducer().getBatchingMaxPublishDelay().toMillis(), TimeUnit.MILLISECONDS)
+                        .topic("persistent://" + t)
+                        .sendTimeout((int) producerConfig.getSendTimeout().toMillis(), TimeUnit.MILLISECONDS)
+                        .blockIfQueueFull(producerConfig.isBlockIfQueueFull())
+                        .maxPendingMessages(producerConfig.getMaxPendingMessages())
+                        .enableBatching(producerConfig.isBatchingEnabled())
+                        .batchingMaxMessages(producerConfig.getBatchingMaxMessages())
+                        .batchingMaxPublishDelay((int) producerConfig.getBatchingMaxPublishDelay().toMillis(), TimeUnit.MILLISECONDS)
                         .create();
             } catch (PulsarClientException e) {
                 throw new PulsarProducerInitException("Failed to create producer for topic: " + t, e);
@@ -400,10 +370,38 @@ public final class PulsarTemplate {
         });
     }
 
-    /**
-     * 序列化对象
-     */
-    public byte[] serialize(Object object) {
+    /*** 获取生产者配置 */
+    private PulsarProperties.Producer getProducer(String topic) {
+        PulsarProperties.Producer producer = pulsarProperties.getProducer();
+        Map<String, PulsarProperties.Producer> producerMap = pulsarProperties.getProducerMap();
+
+        if (!StringUtils.hasText(topic)) {
+            if (producer == null) {
+                throw new PulsarProducerConfigException("Failed to get producer config for topic: " + topic);
+            }
+            return producer;
+        }
+
+        if ((producerMap == null || producerMap.isEmpty()) && producer == null) {
+            throw new PulsarProducerConfigException("Failed to get producer config for topic: " + topic);
+        }
+        if (producerMap == null || producerMap.isEmpty()) {
+            if (!topic.equals(producer.getTopic())) {
+                throw new PulsarProducerConfigException("Failed to get producer config for topic: " + topic);
+            }
+            return producer;
+        }
+
+        for (Map.Entry<String, PulsarProperties.Producer> entry : producerMap.entrySet()) {
+            if (topic.equals(entry.getValue().getTopic())) {
+                return entry.getValue();
+            }
+        }
+        throw new PulsarProducerConfigException("Failed to get producer config for topic: " + topic);
+    }
+
+    /*** 序列化对象 */
+    private byte[] serialize(Object object) {
         try {
             if (object instanceof String) {
                 return ((String) object).getBytes();
@@ -417,9 +415,7 @@ public final class PulsarTemplate {
         }
     }
 
-    /**
-     * 反序列化对象
-     */
+    /*** 反序列化对象 */
     public <T> T deserialize(byte[] data, String dataKey, Class<T> clazz) {
         try {
             if (!StringUtils.hasText(dataKey)) {
@@ -446,13 +442,7 @@ public final class PulsarTemplate {
         }
     }
 
-    /**
-     * 获取消息的消费处理器
-     *
-     * @param data
-     * @param businessMap
-     * @return
-     */
+    /*** 获取消息的消费处理器 */
     public String deserializeMsgRoute(byte[] data, Map<String, String> businessMap) {
         if (businessMap.size() == 1) {
             return businessMap.keySet().iterator().next();
@@ -476,9 +466,7 @@ public final class PulsarTemplate {
         }
     }
 
-    /**
-     * 执行发送前拦截器
-     */
+    /*** 执行发送前拦截器 */
     private Object applyBeforeSendInterceptors(String topic, Object message) {
         if (interceptorRegistry == null) {
             return message;
@@ -499,9 +487,7 @@ public final class PulsarTemplate {
         return currentMessage;
     }
 
-    /**
-     * 执行发送后拦截器
-     */
+    /*** 执行发送后拦截器 */
     private void applyAfterSendInterceptors(String topic, Object message, MessageId messageId, Throwable exception) {
         if (interceptorRegistry == null) {
             return;
@@ -517,9 +503,7 @@ public final class PulsarTemplate {
         }
     }
 
-    /**
-     * 执行接收前拦截器
-     */
+    /*** 执行接收前拦截器 */
     public boolean applyBeforeReceiveInterceptors(Message<?> message) {
         if (interceptorRegistry == null) {
             return true;
@@ -532,15 +516,13 @@ public final class PulsarTemplate {
                 }
             } catch (Exception e) {
                 // 拦截器异常不应该影响消息接收，记录日志即可
-                logger.error("Error in beforeReceive interceptor: " + e.getMessage(), e);
+                logger.error("Error in beforeReceive interceptor: {}", e.getMessage(), e);
             }
         }
         return true;
     }
 
-    /**
-     * 执行接收后拦截器
-     */
+    /*** 执行接收后拦截器 */
     public void applyAfterReceiveInterceptors(Message<?> message, Object processedMessage, Exception exception) {
         if (interceptorRegistry == null) {
             return;
@@ -551,22 +533,40 @@ public final class PulsarTemplate {
                 interceptor.afterReceive(message, processedMessage, exception);
             } catch (Exception e) {
                 // 拦截器异常不应该影响主流程，记录日志即可
-                logger.error("Error in afterReceive interceptor: " + e.getMessage(), e);
+                logger.error("Error in afterReceive interceptor: {}", e.getMessage(), e);
             }
         }
     }
 
-    /**
-     * 关闭资源
-     */
+    /*** 关闭资源 */
     public void close() {
+        logger.info("Pulsar Producer closing");
         producerCache.values().forEach(producer -> {
             try {
                 producer.close();
             } catch (PulsarClientException e) {
-                // 忽略关闭异常
+                // ignore
             }
         });
         producerCache.clear();
+        logger.info("Pulsar Producer closed");
+
+        logger.info("Pulsar consumer closing");
+        consumerCache.values().forEach(c -> {
+            try {
+                c.close();
+            } catch (PulsarClientException e) {
+                // ignore
+            }
+        });
+        consumerCache.clear();
+
+        logger.info("Pulsar dead letter consumer closing");
+        logger.info("Pulsar consumer closed");
+        for (DeadLetterListenerContainer container : deadLetterListenerContainers) {
+            container.stop();
+        }
+        deadLetterListenerContainers.clear();
+        logger.info("Pulsar dead letter consumer closed");
     }
 }

@@ -64,30 +64,13 @@ public @interface EnablePulsar {
 
     /**
      * 是否启用默认日志拦截器
-     *
-     * @return
      */
     boolean enableLogInterceptor() default false;
 
     /**
      * 是否启用默认性能拦截器
-     *
-     * @return
      */
     boolean enablePerformanceInterceptor() default false;
-
-
-    /**
-     * 是否启用死信队列
-     * 默认为 false，启用后会自动处理消费失败的消息
-     */
-    boolean enableDeadLetterQueue() default false;
-
-    /**
-     * 是否启用消息重试
-     * 默认为 true，消费失败时会自动重试
-     */
-    boolean enableRetry() default true;
 
     /**
      * 监听器类型

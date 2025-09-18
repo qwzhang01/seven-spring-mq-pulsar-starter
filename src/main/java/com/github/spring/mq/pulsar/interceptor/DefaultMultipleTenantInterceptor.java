@@ -29,7 +29,7 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
 
     @Override
     public Object beforeSend(String topic, Object message) {
-        buildContext();
+        buildSendContext();
         try {
             MsgDomain<Object> domain = new MsgDomain<>();
             domain.setCorpKey(MsgContext.getCorpKey());
@@ -38,7 +38,7 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
             domain.setMsgId(UUID.randomUUID().toString().replaceAll("-", "").toLowerCase(Locale.ROOT));
             domain.setTime(MsgContext.getTime());
             domain.setData(message);
-            domain.setBusinessPath(MsgContext.getBusinessPath());
+            domain.setMsgRoute(MsgContext.getMsgRoute());
             return domain;
         } finally {
             MsgContext.remove();
@@ -58,8 +58,8 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
         MsgContext.setAppName(domain.getAppName());
         MsgContext.setRequestId(domain.getRequestId());
         MsgContext.setTime(domain.getTime());
-        MsgContext.setBusinessPath(domain.getBusinessPath());
-        return handleMultiTenant(domain.getCorpKey());
+        MsgContext.setMsgRoute(domain.getMsgRoute());
+        return buildReceiveContext(domain.getCorpKey());
     }
 
     @Override
@@ -93,12 +93,12 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
     /**
      * 构建请求上下文
      */
-    public abstract void buildContext();
+    public abstract void buildSendContext();
 
     /**
      * 多租户 接受消息后，处理多租户切换 key
      *
      * @param corpKey
      */
-    public abstract boolean handleMultiTenant(String corpKey);
+    public abstract boolean buildReceiveContext(String corpKey);
 }

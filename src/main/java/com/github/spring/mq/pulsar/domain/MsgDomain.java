@@ -29,7 +29,7 @@ public class MsgDomain<T> {
     /**
      * 消息业务路径
      */
-    private String businessPath;
+    private String msgRoute;
     /**
      * 消息产生时间
      */
@@ -79,12 +79,12 @@ public class MsgDomain<T> {
         this.time = time;
     }
 
-    public String getBusinessPath() {
-        return businessPath;
+    public String getMsgRoute() {
+        return msgRoute;
     }
 
-    public void setBusinessPath(String businessPath) {
-        this.businessPath = businessPath;
+    public void setMsgRoute(String msgRoute) {
+        this.msgRoute = msgRoute;
     }
 
     public T getData() {

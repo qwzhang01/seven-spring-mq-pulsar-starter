@@ -15,6 +15,8 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "spring.pulsar")
 public class PulsarProperties {
 
+    private boolean enabled = true;
+
     /**
      * Pulsar 服务地址
      */
@@ -57,6 +59,14 @@ public class PulsarProperties {
     private Transaction transaction = new Transaction();
 
     private DeadLetterQueueProperties deadLetter;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     public String getServiceUrl() {
         return serviceUrl;

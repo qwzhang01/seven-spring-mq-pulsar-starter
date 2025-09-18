@@ -1,6 +1,8 @@
 package com.github.spring.mq.pulsar.config;
 
 import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
+import org.apache.pulsar.client.api.PulsarClient;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
  * @since 1.0.0
  */
 @Configuration
+@ConditionalOnBean(PulsarClient.class)
 public class PulsarDeadLetterConfiguration {
     /**
      * 死信重试策略

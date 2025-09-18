@@ -29,28 +29,40 @@ public interface TopicMessageSender {
      */
     MessageId send(Object message);
 
+    MessageId send(Object message, String msgRoute);
+
     /**
      * 发送消息
      */
     MessageId send(String key, Object message);
+
+    MessageId send(String key, Object message, String msgRoute);
 
     /**
      * 异步发送消息
      */
     CompletableFuture<MessageId> sendAsync(Object message);
 
+    CompletableFuture<MessageId> sendAsync(Object message, String msgRoute);
+
     /**
      * 异步发送消息
      */
     CompletableFuture<MessageId> sendAsync(String key, Object message);
+
+    CompletableFuture<MessageId> sendAsync(String key, Object message, String msgRoute);
 
     /**
      * 发送延时消息
      */
     MessageId sendAfter(Object message, long delay, TimeUnit unit);
 
+    MessageId sendAfter(Object message, String msgRoute, long delay, TimeUnit unit);
+
     /**
      * 发送延时消息
      */
     MessageId sendAt(Object message, long timestamp);
+
+    MessageId sendAt(Object message, String msgRoute, long timestamp);
 }

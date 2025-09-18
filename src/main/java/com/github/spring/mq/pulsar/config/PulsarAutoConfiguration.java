@@ -30,6 +30,7 @@ import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -54,6 +55,7 @@ import java.util.concurrent.TimeUnit;
 @AutoConfiguration
 @ConditionalOnClass(PulsarClient.class)
 @EnableConfigurationProperties(PulsarProperties.class)
+@ConditionalOnProperty(name = "spring.pulsar.enabled", havingValue = "true", matchIfMissing = true)
 public class PulsarAutoConfiguration {
 
     private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";

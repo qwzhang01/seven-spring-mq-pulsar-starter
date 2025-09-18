@@ -1,5 +1,6 @@
 package com.github.spring.mq.pulsar.core;
 
+import com.github.spring.mq.pulsar.domain.MsgContext;
 import org.apache.pulsar.client.api.MessageId;
 import org.springframework.util.StringUtils;
 
@@ -34,9 +35,21 @@ public class DefaultTopicMessageSender implements TopicMessageSender {
     }
 
     @Override
+    public MessageId send(Object message, String msgRoute) {
+        MsgContext.setMsgRoute(msgRoute);
+        return send(message);
+    }
+
+    @Override
     public MessageId send(String key, Object message) {
         validTopic();
         return pulsarMessageSender.send(topic, key, message);
+    }
+
+    @Override
+    public MessageId send(String key, Object message, String msgRoute) {
+        MsgContext.setMsgRoute(msgRoute);
+        return send(key, message);
     }
 
 
@@ -53,9 +66,21 @@ public class DefaultTopicMessageSender implements TopicMessageSender {
     }
 
     @Override
+    public CompletableFuture<MessageId> sendAsync(Object message, String msgRoute) {
+        MsgContext.setMsgRoute(msgRoute);
+        return sendAsync(message);
+    }
+
+    @Override
     public CompletableFuture<MessageId> sendAsync(String key, Object message) {
         validTopic();
         return pulsarMessageSender.sendAsync(topic, key, message);
+    }
+
+    @Override
+    public CompletableFuture<MessageId> sendAsync(String key, Object message, String msgRoute) {
+        MsgContext.setMsgRoute(msgRoute);
+        return sendAsync(key, message);
     }
 
     @Override
@@ -65,9 +90,21 @@ public class DefaultTopicMessageSender implements TopicMessageSender {
     }
 
     @Override
+    public MessageId sendAfter(Object message, String msgRoute, long delay, TimeUnit unit) {
+        MsgContext.setMsgRoute(msgRoute);
+        return sendAfter(message, delay, unit);
+    }
+
+    @Override
     public MessageId sendAt(Object message, long timestamp) {
         validTopic();
         return pulsarMessageSender.sendAt(topic, message, timestamp);
+    }
+
+    @Override
+    public MessageId sendAt(Object message, String msgRoute, long timestamp) {
+        MsgContext.setMsgRoute(msgRoute);
+        return sendAt(message, timestamp);
     }
 
     private void validTopic() {

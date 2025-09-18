@@ -3,7 +3,9 @@ package com.github.spring.mq.pulsar.config;
 import com.github.spring.mq.pulsar.core.PulsarTemplate;
 import com.github.spring.mq.pulsar.domain.ListenerType;
 import com.github.spring.mq.pulsar.listener.PulsarListenerContainerFactory;
+import org.apache.pulsar.client.api.PulsarClient;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 
@@ -13,6 +15,7 @@ import org.springframework.context.annotation.Bean;
  * @author avinzhang
  */
 @AutoConfiguration
+@ConditionalOnBean(PulsarClient.class)
 public class PulsarConsumerLoopConfiguration {
 
     /**

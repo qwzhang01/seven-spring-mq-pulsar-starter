@@ -303,10 +303,10 @@ public final class PulsarTemplate {
     private void buildListener(Consumer<byte[]> consumer, Message<byte[]> message,
                                Map<String, PulsarListenerContainer> listenerContainers) {
         Map<String, String> topicUrlMap = new HashMap<>();
-        for (Map.Entry<String, PulsarProperties.Consumer> entry : pulsarProperties.getConsumerMap().entrySet()) {
-            topicUrlMap.put(entry.getValue().getTopic(), entry.getKey());
-            topicUrlMap.put(entry.getValue().getRetryTopic(), entry.getKey());
-        }
+        pulsarProperties.getConsumerMap().forEach((key, value) -> {
+            topicUrlMap.put(value.getTopic(), key);
+            topicUrlMap.put(value.getRetryTopic(), key);
+        });
 
         if (consumer instanceof MultiTopicsConsumerImpl) {
             List<String> partitionedTopics = ((MultiTopicsConsumerImpl) consumer).getPartitionedTopics();
@@ -354,7 +354,7 @@ public final class PulsarTemplate {
     private Producer<byte[]> getOrCreateProducer(String topic) {
         return producerCache.computeIfAbsent(topic, t -> {
             try {
-                PulsarProperties.Producer producerConfig = getProducer(topic);
+                var producerConfig = getProducer(topic);
                 return pulsarClient.newProducer()
                         .topic("persistent://" + t)
                         .sendTimeout((int) producerConfig.getSendTimeout().toMillis(), TimeUnit.MILLISECONDS)
@@ -372,8 +372,8 @@ public final class PulsarTemplate {
 
     /*** 获取生产者配置 */
     private PulsarProperties.Producer getProducer(String topic) {
-        PulsarProperties.Producer producer = pulsarProperties.getProducer();
-        Map<String, PulsarProperties.Producer> producerMap = pulsarProperties.getProducerMap();
+        var producer = pulsarProperties.getProducer();
+        var producerMap = pulsarProperties.getProducerMap();
 
         if (!StringUtils.hasText(topic)) {
             if (producer == null) {

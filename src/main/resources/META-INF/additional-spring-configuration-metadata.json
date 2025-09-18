@@ -10,12 +10,18 @@
       "name": "spring.pulsar.service-url",
       "type": "java.lang.String",
       "defaultValue": "pulsar://localhost:6650",
-      "description": "Pulsar服务地址"
+      "description": "Pulsar服务地址，支持多个地址用逗号分隔"
+    },
+    {
+      "name": "spring.pulsar.admin-url",
+      "type": "java.lang.String",
+      "defaultValue": "http://localhost:8080",
+      "description": "Pulsar管理接口地址"
     },
     {
       "name": "spring.pulsar.authentication.enabled",
       "type": "java.lang.Boolean",
-      "defaultValue": true,
+      "defaultValue": false,
       "description": "是否启用认证"
     },
     {
@@ -26,15 +32,16 @@
     {
       "name": "spring.pulsar.authentication.auth-plugin-class-name",
       "type": "java.lang.String",
+      "defaultValue": "org.apache.pulsar.client.impl.auth.AuthenticationToken",
       "description": "认证插件类名"
     },
     {
       "name": "spring.pulsar.authentication.auth-params",
       "type": "java.util.Map<java.lang.String,java.lang.String>",
-      "description": "认证参数"
+      "description": "认证参数映射"
     },
     {
-      "name": "spring.pulsar.producer.topic",
+      "name": "spring.pulsar.producer.default-topic",
       "type": "java.lang.String",
       "description": "默认生产者主题"
     },
@@ -57,6 +64,12 @@
       "description": "最大待发送消息数"
     },
     {
+      "name": "spring.pulsar.producer.max-pending-messages-across-partitions",
+      "type": "java.lang.Integer",
+      "defaultValue": 50000,
+      "description": "跨分区最大待发送消息数"
+    },
+    {
       "name": "spring.pulsar.producer.batching-enabled",
       "type": "java.lang.Boolean",
       "defaultValue": true,
@@ -75,30 +88,32 @@
       "description": "批量发送最大延迟"
     },
     {
-      "name": "spring.pulsar.consumer.topic",
+      "name": "spring.pulsar.producer.batching-max-bytes",
+      "type": "java.lang.Integer",
+      "defaultValue": 131072,
+      "description": "批量发送最大字节数（128KB）"
+    },
+    {
+      "name": "spring.pulsar.producer.compression-type",
+      "type": "java.lang.String",
+      "defaultValue": "NONE",
+      "description": "压缩类型：NONE, LZ4, ZLIB, ZSTD, SNAPPY"
+    },
+    {
+      "name": "spring.pulsar.producer.routing-mode",
+      "type": "java.lang.String",
+      "defaultValue": "RoundRobinPartition",
+      "description": "路由模式：RoundRobinPartition, SinglePartition, CustomPartition"
+    },
+    {
+      "name": "spring.pulsar.consumer.default-topic",
       "type": "java.lang.String",
       "description": "默认消费者主题"
     },
     {
-      "name": "spring.pulsar.consumer.retry-topic",
-      "type": "java.lang.String",
-      "description": "重试主题"
-    },
-    {
-      "name": "spring.pulsar.consumer.dead-topic",
-      "type": "java.lang.String",
-      "description": "死信主题"
-    },
-    {
-      "name": "spring.pulsar.consumer.business-key",
-      "type": "java.lang.String",
-      "defaultValue": "businessPath",
-      "description": "业务区分字段"
-    },
-    {
       "name": "spring.pulsar.consumer.subscription-name",
       "type": "java.lang.String",
-      "defaultValue": "sub1",
+      "defaultValue": "default-subscription",
       "description": "订阅名称"
     },
     {
@@ -110,20 +125,8 @@
     {
       "name": "spring.pulsar.consumer.subscription-initial-position",
       "type": "java.lang.String",
-      "defaultValue": "Earliest",
+      "defaultValue": "Latest",
       "description": "订阅初始位置：Earliest, Latest"
-    },
-    {
-      "name": "spring.pulsar.consumer.auto-ack",
-      "type": "java.lang.Boolean",
-      "defaultValue": true,
-      "description": "是否自动确认消息"
-    },
-    {
-      "name": "spring.pulsar.consumer.retry-time",
-      "type": "java.lang.Integer",
-      "defaultValue": 3,
-      "description": "重试次数"
     },
     {
       "name": "spring.pulsar.consumer.ack-timeout",
@@ -132,28 +135,75 @@
       "description": "消息确认超时时间"
     },
     {
+      "name": "spring.pulsar.consumer.ack-timeout-tick-time",
+      "type": "java.time.Duration",
+      "defaultValue": "1s",
+      "description": "确认超时检查间隔"
+    },
+    {
+      "name": "spring.pulsar.consumer.negative-ack-redelivery-delay",
+      "type": "java.time.Duration",
+      "defaultValue": "1m",
+      "description": "负确认重新投递延迟"
+    },
+    {
       "name": "spring.pulsar.consumer.receiver-queue-size",
       "type": "java.lang.Integer",
       "defaultValue": 1000,
       "description": "接收队列大小"
     },
     {
-      "name": "spring.pulsar.consumer.negative-ack-redelivery-delay",
+      "name": "spring.pulsar.consumer.max-total-receiver-queue-size-across-partitions",
       "type": "java.lang.Integer",
-      "defaultValue": 1000,
-      "description": "负确认重新投递延迟（毫秒）"
+      "defaultValue": 50000,
+      "description": "跨分区接收队列最大总大小"
     },
     {
-      "name": "spring.pulsar.consumer.time-to-reconsume-delay",
+      "name": "spring.pulsar.consumer.consumer-name",
+      "type": "java.lang.String",
+      "description": "消费者名称"
+    },
+    {
+      "name": "spring.pulsar.consumer.read-compacted",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "是否读取压缩主题"
+    },
+    {
+      "name": "spring.pulsar.consumer.pattern-auto-discovery-period",
+      "type": "java.time.Duration",
+      "defaultValue": "1m",
+      "description": "模式自动发现周期"
+    },
+    {
+      "name": "spring.pulsar.consumer.priority-level",
       "type": "java.lang.Integer",
-      "defaultValue": 1000,
-      "description": "重新消费延迟时间（毫秒）"
+      "defaultValue": 0,
+      "description": "消费者优先级"
+    },
+    {
+      "name": "spring.pulsar.consumer.crypto-failure-action",
+      "type": "java.lang.String",
+      "defaultValue": "FAIL",
+      "description": "加密失败处理：FAIL, DISCARD, CONSUME"
+    },
+    {
+      "name": "spring.pulsar.consumer.max-pending-chunked-message",
+      "type": "java.lang.Integer",
+      "defaultValue": 10,
+      "description": "最大待处理分块消息数"
     },
     {
       "name": "spring.pulsar.consumer.auto-ack-oldest-chunked-message-on-queue-full",
       "type": "java.lang.Boolean",
       "defaultValue": false,
       "description": "队列满时是否自动确认最旧的分块消息"
+    },
+    {
+      "name": "spring.pulsar.consumer.expire-time-of-incomplete-chunked-message",
+      "type": "java.time.Duration",
+      "defaultValue": "1m",
+      "description": "不完整分块消息过期时间"
     },
     {
       "name": "spring.pulsar.client.operation-timeout",
@@ -168,6 +218,12 @@
       "description": "连接超时时间"
     },
     {
+      "name": "spring.pulsar.client.request-timeout",
+      "type": "java.time.Duration",
+      "defaultValue": "60s",
+      "description": "请求超时时间"
+    },
+    {
       "name": "spring.pulsar.client.num-io-threads",
       "type": "java.lang.Integer",
       "defaultValue": 1,
@@ -178,6 +234,101 @@
       "type": "java.lang.Integer",
       "defaultValue": 1,
       "description": "监听器线程数"
+    },
+    {
+      "name": "spring.pulsar.client.connections-per-broker",
+      "type": "java.lang.Integer",
+      "defaultValue": 1,
+      "description": "每个Broker的连接数"
+    },
+    {
+      "name": "spring.pulsar.client.use-tcp-no-delay",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否使用TCP_NODELAY"
+    },
+    {
+      "name": "spring.pulsar.client.tls-trust-certs-file-path",
+      "type": "java.lang.String",
+      "description": "TLS信任证书文件路径"
+    },
+    {
+      "name": "spring.pulsar.client.tls-allow-insecure-connection",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "是否允许不安全的TLS连接"
+    },
+    {
+      "name": "spring.pulsar.client.tls-hostname-verification-enable",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "是否启用TLS主机名验证"
+    },
+    {
+      "name": "spring.pulsar.client.concurrent-lookup-request",
+      "type": "java.lang.Integer",
+      "defaultValue": 5000,
+      "description": "并发查找请求数"
+    },
+    {
+      "name": "spring.pulsar.client.max-lookup-request",
+      "type": "java.lang.Integer",
+      "defaultValue": 50000,
+      "description": "最大查找请求数"
+    },
+    {
+      "name": "spring.pulsar.client.max-lookup-redirects",
+      "type": "java.lang.Integer",
+      "defaultValue": 20,
+      "description": "最大查找重定向次数"
+    },
+    {
+      "name": "spring.pulsar.client.max-number-of-rejected-request-per-connection",
+      "type": "java.lang.Integer",
+      "defaultValue": 50,
+      "description": "每个连接最大拒绝请求数"
+    },
+    {
+      "name": "spring.pulsar.client.keep-alive-interval",
+      "type": "java.time.Duration",
+      "defaultValue": "30s",
+      "description": "保活间隔"
+    },
+    {
+      "name": "spring.pulsar.retry.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否启用重试机制"
+    },
+    {
+      "name": "spring.pulsar.retry.max-retries",
+      "type": "java.lang.Integer",
+      "defaultValue": 3,
+      "description": "最大重试次数"
+    },
+    {
+      "name": "spring.pulsar.retry.initial-delay",
+      "type": "java.time.Duration",
+      "defaultValue": "1s",
+      "description": "初始重试延迟"
+    },
+    {
+      "name": "spring.pulsar.retry.multiplier",
+      "type": "java.lang.Double",
+      "defaultValue": 2.0,
+      "description": "重试延迟倍数"
+    },
+    {
+      "name": "spring.pulsar.retry.max-delay",
+      "type": "java.time.Duration",
+      "defaultValue": "30s",
+      "description": "最大重试延迟"
+    },
+    {
+      "name": "spring.pulsar.retry.use-random-delay",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "是否使用随机延迟"
     },
     {
       "name": "spring.pulsar.transaction.enabled",
@@ -220,6 +371,12 @@
       "type": "java.lang.Long",
       "defaultValue": 1073741824,
       "description": "事务日志存储大小（字节）"
+    },
+    {
+      "name": "spring.pulsar.dead-letter.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "是否启用死信队列"
     },
     {
       "name": "spring.pulsar.dead-letter.topic-suffix",
@@ -340,6 +497,24 @@
       "type": "java.lang.Boolean",
       "defaultValue": false,
       "description": "是否启用详细统计"
+    },
+    {
+      "name": "spring.pulsar.health.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否启用健康检查"
+    },
+    {
+      "name": "spring.pulsar.health.timeout",
+      "type": "java.time.Duration",
+      "defaultValue": "10s",
+      "description": "健康检查超时时间"
+    },
+    {
+      "name": "spring.pulsar.interceptor.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否启用消息拦截器"
     }
   ],
   "hints": [
@@ -348,19 +523,19 @@
       "values": [
         {
           "value": "Exclusive",
-          "description": "独占订阅，只有一个消费者可以接收消息"
+          "description": "独占订阅，只有一个消费者可以接收消息，保证消息顺序"
         },
         {
           "value": "Shared",
-          "description": "共享订阅，多个消费者可以并行接收消息"
+          "description": "共享订阅，多个消费者可以并行接收消息，提高吞吐量"
         },
         {
           "value": "Failover",
-          "description": "故障转移订阅，主备模式"
+          "description": "故障转移订阅，主备模式，提供高可用性"
         },
         {
           "value": "Key_Shared",
-          "description": "按键共享订阅，相同键的消息发送给同一个消费者"
+          "description": "按键共享订阅，相同键的消息发送给同一个消费者，兼顾顺序和并发"
         }
       ]
     },
@@ -374,6 +549,65 @@
         {
           "value": "Latest",
           "description": "从最新的消息开始消费"
+        }
+      ]
+    },
+    {
+      "name": "spring.pulsar.producer.compression-type",
+      "values": [
+        {
+          "value": "NONE",
+          "description": "不压缩"
+        },
+        {
+          "value": "LZ4",
+          "description": "LZ4压缩，速度快"
+        },
+        {
+          "value": "ZLIB",
+          "description": "ZLIB压缩，压缩率高"
+        },
+        {
+          "value": "ZSTD",
+          "description": "ZSTD压缩，平衡速度和压缩率"
+        },
+        {
+          "value": "SNAPPY",
+          "description": "Snappy压缩，Google开发"
+        }
+      ]
+    },
+    {
+      "name": "spring.pulsar.producer.routing-mode",
+      "values": [
+        {
+          "value": "RoundRobinPartition",
+          "description": "轮询分区路由"
+        },
+        {
+          "value": "SinglePartition",
+          "description": "单分区路由"
+        },
+        {
+          "value": "CustomPartition",
+          "description": "自定义分区路由"
+        }
+      ]
+    },
+    {
+      "name": "spring.pulsar.consumer.crypto-failure-action",
+      "values": [
+        {
+          "value": "FAIL",
+          "description": "加密失败时抛出异常"
+        },
+        {
+          "value": "DISCARD",
+          "description": "加密失败时丢弃消息"
+        },
+        {
+          "value": "CONSUME",
+          "description": "加密失败时仍然消费消息"
         }
       ]
     }

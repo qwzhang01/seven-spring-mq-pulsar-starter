@@ -3,11 +3,12 @@
 
 spring:
   pulsar:
-    # 基础配置
+    # ========== 基础配置 ==========
     enabled: true                                    # 是否启用Pulsar功能
-    service-url: pulsar://localhost:6650            # Pulsar服务地址
+    service-url: pulsar://localhost:6650            # Pulsar服务地址，支持多个地址用逗号分隔
+    admin-url: http://localhost:8080                 # Pulsar管理接口地址
 
-    # 认证配置
+    # ========== 认证配置 ==========
     authentication:
       enabled: false                                 # 是否启用认证
       # token: eyJhbGciOiJIUzI1NiJ9...              # JWT认证令牌
@@ -16,106 +17,144 @@ spring:
       #   key1: value1
       #   key2: value2
 
-    # 生产者配置
+    # ========== 生产者配置 ==========
     producer:
-      # topic: my-default-topic                      # 默认主题（可选）
+      # default-topic: my-default-topic              # 默认主题（可选）
       send-timeout: 30s                             # 发送超时时间
       block-if-queue-full: false                    # 队列满时是否阻塞
       max-pending-messages: 1000                    # 最大待发送消息数
+      max-pending-messages-across-partitions: 50000 # 跨分区最大待发送消息数
+      
+      # 批量发送配置
       batching-enabled: true                        # 是否启用批量发送
-      batching-max-messages: 100                    # 批量发送最大消息数
+      batching-max-messages: 1000                   # 批量发送最大消息数
       batching-max-publish-delay: 10ms              # 批量发送最大延迟
+      batching-max-bytes: 131072                    # 批量发送最大字节数（128KB）
+      
+      # 高级配置
+      compression-type: NONE                        # 压缩类型：NONE, LZ4, ZLIB, ZSTD, SNAPPY
+      routing-mode: RoundRobinPartition             # 路由模式：RoundRobinPartition, SinglePartition, CustomPartition
 
-    # 多个生产者配置示例（可选）
-    # producer-map:
-    #   order-producer:
-    #     topic: order-events
-    #     send-timeout: 10s
-    #     batching-enabled: true
-    #   notification-producer:
-    #     topic: notifications
-    #     send-timeout: 5s
-    #     batching-enabled: false
-
-    # 消费者配置
+    # ========== 消费者配置 ==========
     consumer:
-      # topic: my-default-topic                      # 默认主题（可选）
-      subscription-name: my-subscription            # 订阅名称
+      # default-topic: my-default-topic              # 默认主题（可选）
+      subscription-name: default-subscription       # 订阅名称
       subscription-type: Shared                     # 订阅类型：Exclusive, Shared, Failover, Key_Shared
-      subscription-initial-position: Earliest      # 订阅初始位置：Earliest, Latest
-      auto-ack: true                               # 是否自动确认消息
-      retry-time: 3                                # 重试次数
+      subscription-initial-position: Latest         # 订阅初始位置：Earliest, Latest
+      
+      # 确认配置
       ack-timeout: 30s                             # 消息确认超时时间
+      ack-timeout-tick-time: 1s                    # 确认超时检查间隔
+      negative-ack-redelivery-delay: 1m            # 负确认重新投递延迟
+      
+      # 队列配置
       receiver-queue-size: 1000                    # 接收队列大小
-      negative-ack-redelivery-delay: 1000          # 负确认重新投递延迟（毫秒）
-      time-to-reconsume-delay: 1000                # 重新消费延迟时间（毫秒）
+      max-total-receiver-queue-size-across-partitions: 50000  # 跨分区接收队列最大总大小
+      
+      # 高级配置
+      # consumer-name: my-consumer                   # 消费者名称
+      read-compacted: false                        # 是否读取压缩主题
+      pattern-auto-discovery-period: 1m            # 模式自动发现周期
+      priority-level: 0                            # 消费者优先级
+      crypto-failure-action: FAIL                  # 加密失败处理：FAIL, DISCARD, CONSUME
+      
+      # 分块消息配置
+      max-pending-chunked-message: 10              # 最大待处理分块消息数
       auto-ack-oldest-chunked-message-on-queue-full: false  # 队列满时是否自动确认最旧的分块消息
-      business-key: businessPath                   # 业务区分字段
+      expire-time-of-incomplete-chunked-message: 1m # 不完整分块消息过期时间
 
-    # 多个消费者配置示例（可选）
-    # consumer-map:
-    #   order-consumer:
-    #     topic: order-events
-    #     subscription-name: order-service
-    #     subscription-type: Shared
-    #   notification-consumer:
-    #     topic: notifications
-    #     subscription-name: notification-service
-    #     subscription-type: Exclusive
-
-    # 客户端配置
+    # ========== 客户端配置 ==========
     client:
+      # 超时配置
       operation-timeout: 30s                       # 操作超时时间
       connection-timeout: 10s                      # 连接超时时间
+      request-timeout: 60s                         # 请求超时时间
+      
+      # 线程配置
       num-io-threads: 1                           # IO线程数
       num-listener-threads: 1                     # 监听器线程数
+      
+      # 连接配置
+      connections-per-broker: 1                   # 每个Broker的连接数
+      use-tcp-no-delay: true                      # 是否使用TCP_NODELAY
+      keep-alive-interval: 30s                    # 保活间隔
+      
+      # TLS配置
+      # tls-trust-certs-file-path: /path/to/certs  # TLS信任证书文件路径
+      tls-allow-insecure-connection: false        # 是否允许不安全的TLS连接
+      tls-hostname-verification-enable: false     # 是否启用TLS主机名验证
+      
+      # 查找配置
+      concurrent-lookup-request: 5000             # 并发查找请求数
+      max-lookup-request: 50000                   # 最大查找请求数
+      max-lookup-redirects: 20                    # 最大查找重定向次数
+      max-number-of-rejected-request-per-connection: 50  # 每个连接最大拒绝请求数
 
-    # 事务配置
+    # ========== 重试机制配置 ==========
+    retry:
+      enabled: true                               # 是否启用重试机制
+      max-retries: 3                             # 最大重试次数
+      initial-delay: 1s                          # 初始重试延迟
+      multiplier: 2.0                            # 重试延迟倍数
+      max-delay: 30s                             # 最大重试延迟
+      use-random-delay: false                    # 是否使用随机延迟
+
+    # ========== 事务配置 ==========
     transaction:
-      enabled: false                               # 是否启用事务
+      enabled: false                             # 是否启用事务
       coordinator-topic: persistent://pulsar/system/transaction_coordinator_assign  # 事务协调器主题
-      timeout: PT1M                               # 事务超时时间（1分钟）
-      buffer-snapshot-segment-size: 1048576       # 事务缓冲区快照段大小（1MB）
-      buffer-snapshot-min-time-in-millis: PT5S    # 事务缓冲区快照最小时间间隔（5秒）
+      timeout: 1m                                # 事务超时时间
+      buffer-snapshot-segment-size: 1048576      # 事务缓冲区快照段大小（1MB）
+      buffer-snapshot-min-time-in-millis: 5s     # 事务缓冲区快照最小时间间隔
       buffer-snapshot-max-transaction-count: 1000 # 事务缓冲区快照最大事务数
-      log-store-size: 1073741824                  # 事务日志存储大小（1GB）
+      log-store-size: 1073741824                 # 事务日志存储大小（1GB）
 
-    # 死信队列配置
+    # ========== 死信队列配置 ==========
     dead-letter:
-      topic-suffix: "-DLQ"                        # 死信队列主题后缀
-      max-retries: 3                              # 最大重试次数
+      enabled: false                             # 是否启用死信队列
+      topic-suffix: "-DLQ"                       # 死信队列主题后缀
+      max-retries: 3                             # 最大重试次数
 
-      # 重试配置
+      # 重试策略配置
       retry:
-        smart-strategy-enabled: true              # 是否启用智能重试策略
-        base-delay: PT1S                          # 基础重试延迟（1秒）
-        max-delay: PT5M                           # 最大重试延迟（5分钟）
-        retry-window: PT24H                       # 重试时间窗口（24小时）
-        jitter-enabled: true                      # 是否启用抖动
-        jitter-factor: 0.2                       # 抖动因子（0.0-1.0）
+        smart-strategy-enabled: true             # 是否启用智能重试策略
+        base-delay: 1s                           # 基础重试延迟
+        max-delay: 5m                            # 最大重试延迟
+        retry-window: 24h                        # 重试时间窗口
+        jitter-enabled: true                     # 是否启用抖动
+        jitter-factor: 0.2                      # 抖动因子（0.0-1.0）
 
       # 清理配置
       cleanup:
-        auto-cleanup-enabled: true                # 是否启用自动清理
-        message-expiration: P7D                   # 消息过期时间（7天）
-        cleanup-cron: "0 0 2 * * ?"              # 清理执行时间（每天凌晨2点）
-        retry-info-expiration: PT24H              # 重试信息过期时间（24小时）
+        auto-cleanup-enabled: true               # 是否启用自动清理
+        message-expiration: 7d                   # 消息过期时间
+        cleanup-cron: "0 0 2 * * ?"             # 清理执行时间（每天凌晨2点）
+        retry-info-expiration: 24h               # 重试信息过期时间
 
       # 监控配置
       monitoring:
-        enabled: true                             # 是否启用监控
-        monitoring-interval: PT5M                 # 监控间隔（5分钟）
-        health-check-timeout: PT30S               # 健康检查超时时间（30秒）
-        alert-enabled: false                      # 是否启用告警
-        alert-threshold: 100                      # 告警阈值（死信消息数量）
+        enabled: true                            # 是否启用监控
+        monitoring-interval: 5m                  # 监控间隔
+        health-check-timeout: 30s                # 健康检查超时时间
+        alert-enabled: false                     # 是否启用告警
+        alert-threshold: 100                     # 告警阈值（死信消息数量）
 
       # 统计配置
       statistics:
-        enabled: true                             # 是否启用统计
-        retention-period: P30D                    # 统计数据保留时间（30天）
-        detailed-enabled: false                   # 是否启用详细统计
+        enabled: true                            # 是否启用统计
+        retention-period: 30d                    # 统计数据保留时间
+        detailed-enabled: false                  # 是否启用详细统计
 
-# 日志配置
+    # ========== 健康检查配置 ==========
+    health:
+      enabled: true                              # 是否启用健康检查
+      timeout: 10s                               # 健康检查超时时间
+
+    # ========== 拦截器配置 ==========
+    interceptor:
+      enabled: true                              # 是否启用消息拦截器
+
+# ========== 日志配置 ==========
 logging:
   level:
     com.github.spring.mq.pulsar: INFO            # Pulsar Starter日志级别
@@ -123,112 +162,228 @@ logging:
     # 调试时可以启用以下配置
     # com.github.spring.mq.pulsar.deadletter: DEBUG
     # com.github.spring.mq.pulsar.transaction: DEBUG
+    # com.github.spring.mq.pulsar.interceptor: DEBUG
 
-# 管理端点配置（可选）
+# ========== 管理端点配置 ==========
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,pulsar                # 暴露健康检查和Pulsar相关端点
+        include: health,info,pulsar              # 暴露健康检查和Pulsar相关端点
   endpoint:
     health:
-      show-details: always                        # 显示健康检查详情
+      show-details: always                       # 显示健康检查详情
+    pulsar:
+      enabled: true                              # 启用Pulsar端点
 
 ---
-# 开发环境配置
+# ========== 开发环境配置 ==========
 spring:
   config:
     activate:
       on-profile: dev
   pulsar:
     service-url: pulsar://localhost:6650
+    admin-url: http://localhost:8080
+    
+    # 开发环境生产者配置
     producer:
-      batching-enabled: false                     # 开发环境禁用批量以便调试
+      batching-enabled: false                    # 开发环境禁用批量以便调试
+      send-timeout: 10s
+      compression-type: NONE
+    
+    # 开发环境消费者配置
     consumer:
       subscription-name: dev-subscription
-      retry-time: 2                               # 开发环境减少重试次数
+      subscription-initial-position: Earliest   # 开发环境从最早消息开始
+      ack-timeout: 10s
+    
+    # 开发环境重试配置
+    retry:
+      max-retries: 2                             # 开发环境减少重试次数
+      initial-delay: 500ms
+    
+    # 开发环境死信队列配置
     dead-letter:
+      enabled: true
       max-retries: 2
       cleanup:
-        message-expiration: P1D                   # 开发环境1天过期
+        message-expiration: 1d                   # 开发环境1天过期
+        cleanup-cron: "0 0 1 * * ?"             # 每天凌晨1点清理
+    
+    # 开发环境认证配置
     authentication:
       enabled: false
 
+# 开发环境日志配置
 logging:
   level:
     com.github.spring.mq.pulsar: DEBUG           # 开发环境启用调试日志
     org.apache.pulsar: INFO
+    com.github.spring.mq.pulsar.interceptor: DEBUG
 
 ---
-# 测试环境配置
+# ========== 测试环境配置 ==========
 spring:
   config:
     activate:
       on-profile: test
   pulsar:
     service-url: pulsar://test-pulsar:6650
+    admin-url: http://test-pulsar:8080
+    
+    # 测试环境生产者配置
     producer:
       send-timeout: 10s
+      batching-enabled: true
+      batching-max-messages: 50
+    
+    # 测试环境消费者配置
     consumer:
       subscription-name: test-subscription
+      subscription-type: Shared
+      ack-timeout: 20s
+    
+    # 测试环境认证配置
     authentication:
       enabled: true
-      token: ${PULSAR_JWT_TOKEN}
+      token: ${PULSAR_JWT_TOKEN:}
+      auth-plugin-class-name: org.apache.pulsar.client.impl.auth.AuthenticationToken
+    
+    # 测试环境死信队列配置
     dead-letter:
+      enabled: true
+      max-retries: 3
       monitoring:
         alert-enabled: true
         alert-threshold: 50
+      cleanup:
+        message-expiration: 3d
+
+# 测试环境日志配置
+logging:
+  level:
+    com.github.spring.mq.pulsar: INFO
+    org.apache.pulsar: WARN
 
 ---
-# 生产环境配置
+# ========== 生产环境配置 ==========
 spring:
   config:
     activate:
       on-profile: prod
   pulsar:
     service-url: pulsar://prod-pulsar-cluster:6650
+    admin-url: http://prod-pulsar-cluster:8080
     
-    # 生产环境优化配置
+    # 生产环境生产者优化配置
     producer:
       send-timeout: 10s
       max-pending-messages: 2000
+      max-pending-messages-across-partitions: 100000
       batching-enabled: true
-      batching-max-messages: 200
+      batching-max-messages: 1000
       batching-max-publish-delay: 5ms
+      batching-max-bytes: 262144                 # 256KB
+      compression-type: LZ4                      # 生产环境启用压缩
+      routing-mode: RoundRobinPartition
     
+    # 生产环境消费者优化配置
     consumer:
-      subscription-name: ${spring.application.name}-${HOSTNAME}
+      subscription-name: ${spring.application.name}-${HOSTNAME:unknown}
       subscription-type: Shared
+      subscription-initial-position: Latest
       receiver-queue-size: 2000
+      max-total-receiver-queue-size-across-partitions: 100000
       ack-timeout: 60s
+      ack-timeout-tick-time: 1s
+      negative-ack-redelivery-delay: 1m
+      priority-level: 0
     
+    # 生产环境客户端优化配置
     client:
       operation-timeout: 60s
       connection-timeout: 30s
+      request-timeout: 120s
       num-io-threads: 2
       num-listener-threads: 2
+      connections-per-broker: 2
+      concurrent-lookup-request: 10000
+      max-lookup-request: 100000
+      keep-alive-interval: 30s
     
-    # 生产环境启用认证
+    # 生产环境认证配置
     authentication:
       enabled: true
       token: ${PULSAR_JWT_TOKEN}
       auth-plugin-class-name: org.apache.pulsar.client.impl.auth.AuthenticationToken
     
+    # 生产环境重试配置
+    retry:
+      enabled: true
+      max-retries: 5
+      initial-delay: 2s
+      multiplier: 2.0
+      max-delay: 60s
+      use-random-delay: true
+    
+    # 生产环境事务配置
+    transaction:
+      enabled: false                             # 根据需要启用
+      timeout: 2m
+      buffer-snapshot-segment-size: 2097152      # 2MB
+      buffer-snapshot-max-transaction-count: 2000
+    
     # 生产环境死信队列配置
     dead-letter:
+      enabled: true
       max-retries: 5
       retry:
-        base-delay: PT2S
-        max-delay: PT10M
+        smart-strategy-enabled: true
+        base-delay: 2s
+        max-delay: 10m
+        retry-window: 24h
+        jitter-enabled: true
+        jitter-factor: 0.1
       cleanup:
-        message-expiration: P30D                  # 生产环境30天过期
+        auto-cleanup-enabled: true
+        message-expiration: 30d                  # 生产环境30天过期
+        cleanup-cron: "0 0 2 * * ?"
+        retry-info-expiration: 7d
       monitoring:
+        enabled: true
+        monitoring-interval: 5m
         alert-enabled: true
         alert-threshold: 200
       statistics:
+        enabled: true
+        retention-period: 90d                    # 生产环境保留90天统计
         detailed-enabled: true
+    
+    # 生产环境健康检查配置
+    health:
+      enabled: true
+      timeout: 30s
 
+# 生产环境日志配置
 logging:
   level:
     com.github.spring.mq.pulsar: INFO
     org.apache.pulsar: WARN
+    # 生产环境可以根据需要调整日志级别
+    # com.github.spring.mq.pulsar.deadletter: INFO
+    # com.github.spring.mq.pulsar.transaction: INFO
+
+# 生产环境管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,pulsar,metrics      # 生产环境暴露更多端点
+  endpoint:
+    health:
+      show-details: when-authorized              # 生产环境限制健康检查详情显示
+  metrics:
+    export:
+      prometheus:
+        enabled: true                            # 启用Prometheus指标导出

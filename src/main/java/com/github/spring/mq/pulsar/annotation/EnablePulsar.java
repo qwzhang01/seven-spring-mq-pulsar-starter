@@ -77,5 +77,5 @@ public @interface EnablePulsar {
      * <p>
      * 默认使用 监听器事件模式
      */
-    ListenerType listenerType() default ListenerType.EVENT;
+    ListenerType listenerType() default ListenerType.LOOP;
 }

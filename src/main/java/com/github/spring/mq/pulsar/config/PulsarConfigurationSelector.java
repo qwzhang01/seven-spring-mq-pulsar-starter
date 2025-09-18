@@ -26,6 +26,10 @@ public class PulsarConfigurationSelector implements ImportSelector {
         if (attributes == null) {
             return new String[0];
         }
+        boolean enabled = attributes.getBoolean("enabled");
+        if (!Boolean.TRUE.equals(enabled)) {
+            return new String[0];
+        }
 
         List<String> imports = new ArrayList<>();
 

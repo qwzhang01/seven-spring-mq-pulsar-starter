@@ -19,7 +19,6 @@
 ### 1. 添加依赖
 
 ```xml
-
 <dependency>
     <groupId>io.github.qwzhang01</groupId>
     <artifactId>seven-spring-mq-pulsar-starter</artifactId>
@@ -32,7 +31,6 @@
 在你的 Spring Boot 应用主类上添加 `@EnablePulsar` 注解：
 
 ```java
-
 @SpringBootApplication
 @EnablePulsar
 public class Application {
@@ -81,7 +79,6 @@ spring:
 #### 基础消息发送
 
 ```java
-
 @Service
 public class MessageService {
 
@@ -114,7 +111,6 @@ public class MessageService {
 #### 业务场景示例
 
 ```java
-
 @Service
 public class OrderService {
 
@@ -153,7 +149,6 @@ public class OrderService {
 #### 基础消息监听
 
 ```java
-
 @Component
 public class MessageListener {
 
@@ -189,7 +184,6 @@ public class MessageListener {
 #### 业务场景示例
 
 ```java
-
 @Component
 public class OrderEventListener {
 
@@ -270,7 +264,6 @@ public interface PulsarMessageInterceptor {
 #### 日志拦截器
 
 ```java
-
 @Component
 public class LoggingInterceptor implements PulsarMessageInterceptor {
 
@@ -307,7 +300,6 @@ public class LoggingInterceptor implements PulsarMessageInterceptor {
 #### 消息审计拦截器
 
 ```java
-
 @Component
 public class MessageAuditInterceptor implements PulsarMessageInterceptor {
 
@@ -349,7 +341,6 @@ public class MessageAuditInterceptor implements PulsarMessageInterceptor {
 #### 性能监控拦截器
 
 ```java
-
 @Component
 public class PerformanceInterceptor implements PulsarMessageInterceptor {
     private final ThreadLocal<Long> startTime = new ThreadLocal<>();
@@ -417,7 +408,6 @@ spring:
 ### 死信队列处理器
 
 ```java
-
 @Component
 public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
 
@@ -459,7 +449,6 @@ public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
 #### REST API 管理
 
 ```java
-
 @RestController
 @RequestMapping("/api/dead-letter")
 public class DeadLetterController {
@@ -471,6 +460,7 @@ public class DeadLetterController {
     @GetMapping("/statistics")
     public ResponseEntity<Map<String, Object>> getStatistics() {
         // 实现统计信息获取
+        return ResponseEntity.ok(deadLetterQueueManager.getStatistics());
     }
 
     // 读取死信消息
@@ -478,14 +468,16 @@ public class DeadLetterController {
     public ResponseEntity<List<DeadLetterMessage>> readMessages(
             @PathVariable String topic,
             @RequestParam(defaultValue = "10") int maxMessages) {
-        // 实现消息读取
+        List<DeadLetterMessage> messages = deadLetterQueueManager.readMessages(topic, maxMessages);
+        return ResponseEntity.ok(messages);
     }
 
     // 重新处理死信消息
     @PostMapping("/reprocess")
     public ResponseEntity<Map<String, Object>> reprocessMessage(
             @RequestBody ReprocessRequest request) {
-        // 实现消息重新处理
+        Map<String, Object> result = deadLetterQueueManager.reprocessMessage(request);
+        return ResponseEntity.ok(result);
     }
 
     // 清理过期消息
@@ -493,7 +485,8 @@ public class DeadLetterController {
     public ResponseEntity<Map<String, Object>> cleanupExpiredMessages(
             @PathVariable String topic,
             @RequestParam(defaultValue = "7") int expirationDays) {
-        // 实现消息清理
+        Map<String, Object> result = deadLetterQueueManager.cleanupExpiredMessages(topic, expirationDays);
+        return ResponseEntity.ok(result);
     }
 }
 ```
@@ -501,7 +494,6 @@ public class DeadLetterController {
 #### 编程式管理
 
 ```java
-
 @Service
 public class DeadLetterManagementService {
 
@@ -559,7 +551,6 @@ public class DeadLetterManagementService {
 #### 1. 异常分类处理
 
 ```java
-
 @Component
 public class SmartDeadLetterHandler implements DeadLetterQueueHandler {
 
@@ -600,7 +591,6 @@ public class SmartDeadLetterHandler implements DeadLetterQueueHandler {
 #### 2. 死信消息分析
 
 ```java
-
 @Service
 public class DeadLetterAnalysisService {
 
@@ -685,7 +675,6 @@ spring:
 #### 注解方式（推荐）
 
 ```java
-
 @Service
 public class MessageService {
 
@@ -711,7 +700,6 @@ public class MessageService {
 #### 编程式事务
 
 ```java
-
 @Service
 public class MessageService {
 
@@ -743,7 +731,6 @@ public class MessageService {
 #### 手动事务管理
 
 ```java
-
 @Service
 public class MessageService {
 
@@ -798,7 +785,6 @@ String txnId = PulsarTransactionUtils.getCurrentTransactionId();
 ### EnablePulsar 注解选项
 
 ```java
-
 @EnablePulsar(
         enabled = true,                    // 是否启用 Pulsar
         enableTransaction = false,         // 是否启用事务支持
@@ -923,7 +909,6 @@ logging:
 Starter 提供了内置的健康检查功能：
 
 ```java
-
 @Autowired
 private PulsarHealthIndicator healthIndicator;
 
@@ -936,7 +921,6 @@ public void checkHealth() {
 ### 健康检查集成
 
 ```java
-
 @RestController
 @RequestMapping("/health")
 public class HealthController {
@@ -997,7 +981,6 @@ public class BadOrderEvent {
 ### 4. 异常处理
 
 ```java
-
 @PulsarListener(topic = "orders", subscription = "order-processor")
 public void processOrder(Order order) {
     try {
@@ -1018,7 +1001,6 @@ public void processOrder(Order order) {
 ### 5. 性能优化
 
 ```java
-
 @Service
 public class HighThroughputService {
 
@@ -1096,14 +1078,19 @@ public void debugTransaction() {
 4. **错误恢复**: 合理处理事务失败和重试逻辑
 5. **资源管理**: 及时释放事务资源，避免资源泄漏
 
+## 版本要求
+
+- Java 17+
+- Spring Boot 3.0+
+- Apache Pulsar 3.2.4+
+
+## 待实现
+- 死信队列
+- 重试队列
+
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request 来改进这个项目。
-
-## 待办
-
-- 死信队列
-- 重试队列
 
 ## 许可证
 

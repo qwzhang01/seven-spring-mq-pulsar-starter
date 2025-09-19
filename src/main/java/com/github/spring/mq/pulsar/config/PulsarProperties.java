@@ -293,6 +293,7 @@ public class PulsarProperties {
         private String businessKey = "businessPath";
 
         private String subscriptionName = "sub1";
+        private String deadTopicSubscriptionName = "sub1";
         /**
          * 订阅模式 Exclusive,Shared,Failover,Key_Shared
          */
@@ -336,6 +337,14 @@ public class PulsarProperties {
 
         public boolean isAutoAck() {
             return autoAck;
+        }
+
+        public String getDeadTopicSubscriptionName() {
+            return deadTopicSubscriptionName;
+        }
+
+        public void setDeadTopicSubscriptionName(String deadTopicSubscriptionName) {
+            this.deadTopicSubscriptionName = deadTopicSubscriptionName;
         }
 
         public void setAutoAck(boolean autoAck) {

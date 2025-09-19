@@ -1,12 +1,11 @@
 package com.github.spring.mq.pulsar.listener;
 
 import org.apache.pulsar.client.api.Consumer;
-import org.apache.pulsar.client.api.Messages;
+import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -48,8 +47,8 @@ public class DeadLetterListenerContainer {
     private void listen() {
         while (running) {
             try {
-                CompletableFuture<Messages<byte[]>> messagesCompletableFuture = consumer.batchReceiveAsync();
-                deadLetterMessageProcessor.process(consumer, messagesCompletableFuture);
+                Message<byte[]> message = consumer.receive();
+                deadLetterMessageProcessor.process(consumer, message);
             } catch (Exception e) {
                 logger.error("Error receiving message", e);
             }

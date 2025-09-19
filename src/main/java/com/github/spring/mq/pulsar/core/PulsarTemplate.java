@@ -274,7 +274,7 @@ public final class PulsarTemplate {
                     if (org.apache.commons.lang3.StringUtils.isNotBlank(consumer.getDeadTopic())) {
                         // 指定死信队列
                         deadLetterPolicyBuilder.deadLetterTopic("persistent://" + consumer.getDeadTopic());
-                        buildDeadLetterConsumer(consumer.getDeadTopic());
+                        buildDeadLetterConsumer(consumer.getDeadTopic(), consumer.getDeadTopicSubscriptionName());
                     }
                     consumerBuilder.deadLetterPolicy(deadLetterPolicyBuilder.build());
                 }
@@ -330,9 +330,9 @@ public final class PulsarTemplate {
     }
 
     /*** 构建死信消费者 */
-    private void buildDeadLetterConsumer(String deadTopic) {
+    private void buildDeadLetterConsumer(String deadTopic, String subName) {
         try {
-            Consumer<byte[]> consumer = createConsumer(deadTopic);
+            Consumer<byte[]> consumer = createConsumer(deadTopic, subName);
             DeadLetterListenerContainer container = new DeadLetterListenerContainer(consumer, deadLetterMessageProcessor);
             deadLetterListenerContainers.add(container);
             container.start();
@@ -342,11 +342,12 @@ public final class PulsarTemplate {
     }
 
     /*** 创建消费者 */
-    private Consumer<byte[]> createConsumer(String topic) throws PulsarClientException {
+    private Consumer<byte[]> createConsumer(String topic, String subName) throws PulsarClientException {
         return pulsarClient.newConsumer()
                 .topic("persistent://" + topic)
                 .subscriptionType(SubscriptionType.Shared)
                 .subscriptionInitialPosition(SubscriptionInitialPosition.Earliest)
+                .subscriptionName(subName)
                 .subscribe();
     }
 

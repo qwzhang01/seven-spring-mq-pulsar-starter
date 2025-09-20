@@ -3,9 +3,26 @@ package com.github.spring.mq.pulsar.domain;
 import java.time.LocalDateTime;
 
 /**
- * 消息体上下文
+ * Message context holder
+ * 
+ * <p>This class provides a thread-local context for storing message-related information
+ * during message processing. It allows different components to access contextual data
+ * without explicitly passing it through method parameters.
+ * 
+ * <p>The context includes:
+ * <ul>
+ *   <li>Processing time</li>
+ *   <li>Application name</li>
+ *   <li>Corporation key</li>
+ *   <li>Request ID for tracing</li>
+ *   <li>Message routing information</li>
+ * </ul>
+ * 
+ * <p><strong>Important:</strong> Always call {@link #remove()} after message processing
+ * to prevent memory leaks in thread pools.
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public class MsgContext {
     private static final ThreadLocal<Context> HOLDER = new ThreadLocal<>();

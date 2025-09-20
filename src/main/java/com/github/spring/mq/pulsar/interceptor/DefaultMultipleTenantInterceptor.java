@@ -13,9 +13,28 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * 多租户拦截器
+ * Default multi-tenant interceptor
+ * 
+ * <p>This abstract interceptor provides multi-tenancy support for Pulsar messages.
+ * It automatically wraps outgoing messages with tenant context information and
+ * extracts tenant context from incoming messages.
+ * 
+ * <p>Features:
+ * <ul>
+ *   <li>Automatic message wrapping with {@link MsgDomain}</li>
+ *   <li>Tenant context propagation</li>
+ *   <li>Request tracing support</li>
+ *   <li>Thread-local context management</li>
+ * </ul>
+ * 
+ * <p>Subclasses must implement:
+ * <ul>
+ *   <li>{@link #buildSendContext()} - Set up context before sending</li>
+ *   <li>{@link #buildReceiveContext(String)} - Handle tenant switching on receive</li>
+ * </ul>
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageInterceptor {
 
@@ -69,12 +88,12 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
 
     @Override
     public int getOrder() {
-        // 最高优先级，确保能准确测量时间
+        // Highest priority to ensure proper context setup
         return 10;
     }
 
     /**
-     * 反序列化对象
+     * Deserialize object from byte array
      */
     private <T> T deserialize(byte[] data, Class<T> clazz) {
         try {
@@ -91,14 +110,21 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
     }
 
     /**
-     * 构建请求上下文
+     * Build request context before sending message
+     * 
+     * <p>Implementations should set up the necessary context information
+     * in {@link MsgContext} before message sending.
      */
     public abstract void buildSendContext();
 
     /**
-     * 多租户 接受消息后，处理多租户切换 key
+     * Handle multi-tenant context switching after receiving message
+     * 
+     * <p>Implementations should handle tenant switching based on the
+     * corporation key extracted from the message.
      *
-     * @param corpKey
+     * @param corpKey Corporation key for tenant identification
+     * @return true if context switching is successful, false otherwise
      */
     public abstract boolean buildReceiveContext(String corpKey);
 }

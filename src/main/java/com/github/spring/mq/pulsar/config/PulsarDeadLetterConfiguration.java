@@ -8,7 +8,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Pulsar 死信队列配置类
+ * Pulsar dead letter queue configuration class
+ * 
+ * <p>This configuration class sets up the infrastructure for handling
+ * dead letter messages in Pulsar. Dead letter messages are messages
+ * that have exceeded the maximum retry attempts and need special handling.
+ * 
+ * <p>The configuration provides a DeadLetterMessageProcessor bean that
+ * handles the processing and acknowledgment of dead letter messages.
  *
  * @author avinzhang
  * @since 1.0.0
@@ -17,7 +24,13 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnBean(PulsarClient.class)
 public class PulsarDeadLetterConfiguration {
     /**
-     * 死信重试策略
+     * Dead letter message processor
+     * 
+     * <p>Creates a DeadLetterMessageProcessor bean for handling messages
+     * that have been moved to the dead letter queue after exceeding
+     * the maximum retry attempts.
+     * 
+     * @return DeadLetterMessageProcessor instance
      */
     @Bean
     @ConditionalOnMissingBean

@@ -11,7 +11,18 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Pulsar 拦截器配置类
+ * Pulsar interceptor configuration class
+ * 
+ * <p>This configuration class sets up the interceptor infrastructure for Pulsar
+ * message processing. It automatically discovers all PulsarMessageInterceptor
+ * beans and registers them in a sorted registry based on their priority.
+ * 
+ * <p>Features:
+ * <ul>
+ *   <li>Automatic interceptor discovery and registration</li>
+ *   <li>Priority-based interceptor ordering</li>
+ *   <li>Conditional configuration based on PulsarClient presence</li>
+ * </ul>
  *
  * @author avinzhang
  * @since 1.0.0
@@ -27,12 +38,17 @@ public class PulsarInterceptorConfiguration {
     }
 
     /**
-     * 拦截器注册表
+     * Interceptor registry
+     * 
+     * <p>A record that holds all registered PulsarMessageInterceptor instances
+     * sorted by their priority order. Lower order values indicate higher priority.
+     * 
+     * @param interceptors List of interceptors sorted by priority
      */
     public record PulsarInterceptorRegistry(List<PulsarMessageInterceptor> interceptors) {
         public PulsarInterceptorRegistry(List<PulsarMessageInterceptor> interceptors) {
             this.interceptors = interceptors;
-            // 按优先级排序
+            // Sort by priority order
             this.interceptors.sort(Comparator.comparingInt(PulsarMessageInterceptor::getOrder));
         }
     }

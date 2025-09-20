@@ -22,9 +22,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Pulsar 操作模板类
+ * Pulsar operations template class
+ * 
+ * <p>This class provides a high-level abstraction for Pulsar operations, including:
+ * <ul>
+ *   <li>Message sending (sync/async)</li>
+ *   <li>Delayed message sending</li>
+ *   <li>Consumer management</li>
+ *   <li>Message interceptor support</li>
+ *   <li>Dead letter queue handling</li>
+ * </ul>
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public final class PulsarTemplate {
 
@@ -54,20 +64,20 @@ public final class PulsarTemplate {
     }
 
     /**
-     * 同步发送消息
+     * Send message synchronously
      */
     public MessageId send(String topic, Object message) throws PulsarClientException {
         return send(topic, null, message);
     }
 
     /**
-     * 同步发送消息（带key）
+     * Send message synchronously with key
      */
     public MessageId send(String topic, String key, Object message) throws PulsarClientException {
-        // 执行发送前拦截器
+        // Execute before-send interceptors
         Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
         if (interceptedMessage == null) {
-            // 拦截器返回null，不发送消息
+            // Interceptor returned null, do not send message
             return null;
         }
 
@@ -89,35 +99,35 @@ public final class PulsarTemplate {
             sendException = e;
             throw e;
         } finally {
-            // 执行发送后拦截器
+            // Execute after-send interceptors
             applyAfterSendInterceptors(topic, interceptedMessage, messageId, sendException);
         }
     }
 
     /**
-     * 发送延时消息
+     * Send delayed message
      *
-     * @param topic
-     * @param message
-     * @param delay
-     * @param unit
-     * @return
-     * @throws PulsarClientException
+     * @param topic   topic name
+     * @param message message content
+     * @param delay   delay time
+     * @param unit    time unit
+     * @return message ID
+     * @throws PulsarClientException if sending fails
      */
     public MessageId sendAfter(String topic, Object message, long delay, TimeUnit unit) throws PulsarClientException {
         return sendAfter(topic, null, message, delay, unit);
     }
 
     /**
-     * 发送延时消息
+     * Send delayed message with key
      *
-     * @param topic
-     * @param key
-     * @param message
-     * @param delay
-     * @param unit
-     * @return
-     * @throws PulsarClientException
+     * @param topic   topic name
+     * @param key     message key
+     * @param message message content
+     * @param delay   delay time
+     * @param unit    time unit
+     * @return message ID
+     * @throws PulsarClientException if sending fails
      */
     public MessageId sendAfter(String topic, String key, Object message, long delay, TimeUnit unit) throws PulsarClientException {
         // 执行发送前拦截器
@@ -153,14 +163,14 @@ public final class PulsarTemplate {
 
 
     /**
-     * 发送延时消息
+     * Send message at specific timestamp
      */
     public MessageId sendAt(String topic, Object message, long timestamp) throws PulsarClientException {
         return sendAt(topic, null, message, timestamp);
     }
 
     /**
-     * 发送延时消息
+     * Send message at specific timestamp with key
      */
     public MessageId sendAt(String topic, String key, Object message, long timestamp) throws PulsarClientException {
         // 执行发送前拦截器
@@ -196,13 +206,15 @@ public final class PulsarTemplate {
 
 
     /**
-     * 异步发送消息
+     * Send message asynchronously
      */
     public CompletableFuture<MessageId> sendAsync(String topic, Object message) {
         return sendAsync(topic, null, message);
     }
 
-    /*** 异步发送消息（带key） */
+    /**
+     * Send message asynchronously with key
+     */
     public CompletableFuture<MessageId> sendAsync(String topic, String key, Object message) {
         // 执行发送前拦截器
         Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
@@ -299,7 +311,9 @@ public final class PulsarTemplate {
         });
     }
 
-    /*** 构建监听器 */
+    /**
+     * Build listener
+     */
     private void buildListener(Consumer<byte[]> consumer, Message<byte[]> message,
                                Map<String, PulsarListenerContainer> listenerContainers) {
         Map<String, String> topicUrlMap = new HashMap<>();
@@ -329,7 +343,9 @@ public final class PulsarTemplate {
         }
     }
 
-    /*** 构建死信消费者 */
+    /**
+     * Build dead letter consumer
+     */
     private void buildDeadLetterConsumer(String deadTopic, String subName) {
         try {
             Consumer<byte[]> consumer = createConsumer(deadTopic, subName);
@@ -337,11 +353,13 @@ public final class PulsarTemplate {
             deadLetterListenerContainers.add(container);
             container.start();
         } catch (Exception e) {
-            logger.error("构建死信队列监听器异常", e);
+            logger.error("Failed to build dead letter queue listener", e);
         }
     }
 
-    /*** 创建消费者 */
+    /**
+     * Create consumer
+     */
     private Consumer<byte[]> createConsumer(String topic, String subName) throws PulsarClientException {
         return pulsarClient.newConsumer()
                 .topic("persistent://" + topic)
@@ -351,7 +369,9 @@ public final class PulsarTemplate {
                 .subscribe();
     }
 
-    /*** 获取或创建生产者 */
+    /**
+     * Get or create producer
+     */
     private Producer<byte[]> getOrCreateProducer(String topic) {
         return producerCache.computeIfAbsent(topic, t -> {
             try {
@@ -371,7 +391,9 @@ public final class PulsarTemplate {
         });
     }
 
-    /*** 获取生产者配置 */
+    /**
+     * Get producer configuration
+     */
     private PulsarProperties.Producer getProducer(String topic) {
         var producer = pulsarProperties.getProducer();
         var producerMap = pulsarProperties.getProducerMap();
@@ -401,7 +423,9 @@ public final class PulsarTemplate {
         throw new PulsarProducerConfigException("Failed to get producer config for topic: " + topic);
     }
 
-    /*** 序列化对象 */
+    /**
+     * Serialize object
+     */
     private byte[] serialize(Object object) {
         try {
             if (object instanceof String) {
@@ -416,7 +440,9 @@ public final class PulsarTemplate {
         }
     }
 
-    /*** 反序列化对象 */
+    /**
+     * Deserialize object
+     */
     public <T> T deserialize(byte[] data, String dataKey, Class<T> clazz) {
         try {
             if (!StringUtils.hasText(dataKey)) {
@@ -443,7 +469,9 @@ public final class PulsarTemplate {
         }
     }
 
-    /*** 获取消息的消费处理器 */
+    /**
+     * Get message consumer processor
+     */
     public String deserializeMsgRoute(byte[] data, Map<String, String> businessMap) {
         if (businessMap.size() == 1) {
             return businessMap.keySet().iterator().next();
@@ -467,7 +495,9 @@ public final class PulsarTemplate {
         }
     }
 
-    /*** 执行发送前拦截器 */
+    /**
+     * Execute before-send interceptors
+     */
     private Object applyBeforeSendInterceptors(String topic, Object message) {
         if (interceptorRegistry == null) {
             return message;
@@ -481,14 +511,16 @@ public final class PulsarTemplate {
                     break;
                 }
             } catch (Exception e) {
-                // 拦截器异常不应该影响消息发送，记录日志即可
+                // Interceptor exceptions should not affect message sending, just log them
                 logger.error("Error in beforeSend interceptor: " + e.getMessage(), e);
             }
         }
         return currentMessage;
     }
 
-    /*** 执行发送后拦截器 */
+    /**
+     * Execute after-send interceptors
+     */
     private void applyAfterSendInterceptors(String topic, Object message, MessageId messageId, Throwable exception) {
         if (interceptorRegistry == null) {
             return;
@@ -498,13 +530,15 @@ public final class PulsarTemplate {
             try {
                 interceptor.afterSend(topic, message, messageId, exception);
             } catch (Exception e) {
-                // 拦截器异常不应该影响主流程，记录日志即可
+                // Interceptor exceptions should not affect main flow, just log them
                 logger.error("Error in afterSend interceptor: " + e.getMessage(), e);
             }
         }
     }
 
-    /*** 执行接收前拦截器 */
+    /**
+     * Execute before-receive interceptors
+     */
     public boolean applyBeforeReceiveInterceptors(Message<?> message) {
         if (interceptorRegistry == null) {
             return true;
@@ -516,14 +550,16 @@ public final class PulsarTemplate {
                     return false;
                 }
             } catch (Exception e) {
-                // 拦截器异常不应该影响消息接收，记录日志即可
+                // Interceptor exceptions should not affect message receiving, just log them
                 logger.error("Error in beforeReceive interceptor: {}", e.getMessage(), e);
             }
         }
         return true;
     }
 
-    /*** 执行接收后拦截器 */
+    /**
+     * Execute after-receive interceptors
+     */
     public void applyAfterReceiveInterceptors(Message<?> message, Object processedMessage, Exception exception) {
         if (interceptorRegistry == null) {
             return;
@@ -533,20 +569,22 @@ public final class PulsarTemplate {
             try {
                 interceptor.afterReceive(message, processedMessage, exception);
             } catch (Exception e) {
-                // 拦截器异常不应该影响主流程，记录日志即可
+                // Interceptor exceptions should not affect main flow, just log them
                 logger.error("Error in afterReceive interceptor: {}", e.getMessage(), e);
             }
         }
     }
 
-    /*** 关闭资源 */
+    /**
+     * Close resources
+     */
     public void close() {
         logger.info("Pulsar Producer closing");
         producerCache.values().forEach(producer -> {
             try {
                 producer.close();
             } catch (PulsarClientException e) {
-                // ignore
+                // Ignore exception during shutdown
             }
         });
         producerCache.clear();

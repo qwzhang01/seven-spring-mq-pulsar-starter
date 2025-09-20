@@ -6,8 +6,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Pulsar 健康检查指示器
- * 简化版本，不依赖 Spring Boot Actuator
+ * Pulsar health check indicator
+ * 
+ * <p>Simplified version that doesn't depend on Spring Boot Actuator.
+ * This class provides health check functionality for Pulsar connections
+ * and can be used to monitor the status of Pulsar client connections.
+ * 
+ * <p>The health check includes:
+ * <ul>
+ *   <li>Client connection status verification</li>
+ *   <li>Basic connectivity tests</li>
+ *   <li>Error reporting for connection issues</li>
+ * </ul>
  *
  * @author avinzhang
  * @since 1.0.0
@@ -21,23 +31,23 @@ public final class PulsarHealthIndicator {
     }
 
     /**
-     * 检查 Pulsar 健康状态
+     * Check Pulsar health status
      *
-     * @return 健康状态信息
+     * @return Health status information map containing status and details
      */
     public Map<String, Object> health() {
         Map<String, Object> health = new HashMap<>();
 
         try {
-            // 检查 Pulsar 客户端状态
+            // Check Pulsar client status
             if (pulsarClient.isClosed()) {
                 health.put("status", "DOWN");
                 health.put("details", Map.of("status", "Client is closed"));
                 return health;
             }
 
-            // 尝试获取集群信息来验证连接
-            // 这里可以添加更多的健康检查逻辑
+            // Try to get cluster information to verify connection
+            // More health check logic can be added here
             health.put("status", "UP");
             health.put("details", Map.of(
                     "status", "Connected",

@@ -8,8 +8,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 日志记录拦截器示例
- * 演示如何实现自定义的Pulsar消息拦截器
+ * Logging Pulsar message interceptor example
+ * 
+ * <p>Demonstrates how to implement a custom Pulsar message interceptor
+ * for logging purposes. This interceptor logs message send and receive
+ * operations with detailed information including:
+ * <ul>
+ *   <li>Message content and topic information</li>
+ *   <li>Send/receive timestamps</li>
+ *   <li>Success/failure status</li>
+ *   <li>Error details when exceptions occur</li>
+ * </ul>
  *
  * @author avinzhang
  * @since 1.0.0
@@ -31,49 +40,49 @@ public class LoggingPulsarMessageInterceptor implements PulsarMessageInterceptor
         } catch (JsonProcessingException e) {
             throw new com.github.spring.mq.pulsar.exception.JacksonException("", e);
         }
-        logger.info("准备发送消息到主题: {}, 消息内容: {}", topic, logMsg);
-        // 可以在这里对消息进行预处理
-        // 例如：添加时间戳、加密、验证等
+        logger.info("Preparing to send message to topic: {}, message content: {}", topic, logMsg);
+        // Message preprocessing can be done here
+        // For example: adding timestamps, encryption, validation, etc.
 
-        // 返回处理后的消息
+        // Return processed message
         return message;
     }
 
     @Override
     public void afterSend(String topic, Object message, MessageId messageId, Throwable exception) {
         if (exception == null) {
-            logger.info("消息发送成功 - 主题: {}, 消息ID: {}", topic, messageId);
+            logger.info("Message sent successfully - Topic: {}, Message ID: {}", topic, messageId);
         } else {
-            logger.error("消息发送失败 - 主题: {}, 错误: {}", topic, exception.getMessage(), exception);
+            logger.error("Message send failed - Topic: {}, Error: {}", topic, exception.getMessage(), exception);
         }
     }
 
     @Override
     public boolean beforeReceive(Message<?> message) {
-        logger.info("准备接收消息 - 主题: {}, 消息ID: {}, 发布时间: {}",
+        logger.info("Preparing to receive message - Topic: {}, Message ID: {}, Publish time: {}",
                 message.getTopicName(), message.getMessageId(), message.getPublishTime());
 
-        // 可以在这里进行消息过滤
-        // 返回false将跳过该消息的处理
+        // Message filtering can be done here
+        // Returning false will skip processing of this message
 
-        // 继续处理消息
+        // Continue processing message
         return true;
     }
 
     @Override
     public void afterReceive(Message<?> message, Object processedMessage, Exception exception) {
         if (exception == null) {
-            logger.info("消息处理成功 - 主题: {}, 消息ID: {}",
+            logger.info("Message processed successfully - Topic: {}, Message ID: {}",
                     message.getTopicName(), message.getMessageId());
         } else {
-            logger.error("消息处理失败 - 主题: {}, 消息ID: {}, 错误: {}",
+            logger.error("Message processing failed - Topic: {}, Message ID: {}, Error: {}",
                     message.getTopicName(), message.getMessageId(), exception.getMessage(), exception);
         }
     }
 
     @Override
     public int getOrder() {
-        // 设置拦截器优先级，数值越小优先级越高
+        // Set interceptor priority, lower values indicate higher priority
         return 100;
     }
 }

@@ -19,9 +19,26 @@ import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 /**
- * Pulsar 监听器容器
+ * Pulsar listener container
+ * 
+ * <p>This class manages the lifecycle of Pulsar message consumers and handles
+ * message processing for methods annotated with @PulsarListener. It provides:
+ * <ul>
+ *   <li>Consumer lifecycle management (start/stop)</li>
+ *   <li>Message routing and processing</li>
+ *   <li>Error handling and message acknowledgment</li>
+ *   <li>Support for multiple message handlers per topic</li>
+ *   <li>Interceptor chain execution</li>
+ * </ul>
+ * 
+ * <p>The container supports different listener types:
+ * <ul>
+ *   <li>LOOP: Polling-based message consumption</li>
+ *   <li>EVENT: Event-driven message consumption</li>
+ * </ul>
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public class PulsarListenerContainer {
 
@@ -29,9 +46,9 @@ public class PulsarListenerContainer {
 
     private final Consumer<byte[]> consumer;
     /**
-     * 处理器容器
-     * key: 消息 route
-     * value:消息 handler
+     * Handler container
+     * key: message route
+     * value: message handler
      */
     private final ConcurrentHashMap<String, Handler> handlerMap = new ConcurrentHashMap<>();
 
@@ -45,8 +62,8 @@ public class PulsarListenerContainer {
 
     private volatile boolean running = false;
     /**
-     * key 消息路由
-     * value routeKey
+     * key: message route
+     * value: routeKey
      */
     private Map<String, String> routeToKey = null;
 
@@ -74,7 +91,7 @@ public class PulsarListenerContainer {
     }
 
     /**
-     * 启动监听器
+     * Start the listener
      */
     public void start() {
         if (running) {
@@ -86,7 +103,7 @@ public class PulsarListenerContainer {
     }
 
     /**
-     * 停止监听器
+     * Stop the listener
      */
     public void stop() {
         running = false;
@@ -100,7 +117,7 @@ public class PulsarListenerContainer {
     }
 
     /**
-     * 监听消息
+     * Listen for messages
      */
     private void listen() {
         if (ListenerType.EVENT.equals(listenerType)) {
@@ -119,7 +136,7 @@ public class PulsarListenerContainer {
     }
 
     /**
-     * 处理消息
+     * Process message
      */
     private void processMessage(CompletableFuture<Message<byte[]>> receiveAsync) throws ExecutionException, InterruptedException {
         Message<byte[]> message = receiveAsync.get();
@@ -133,7 +150,7 @@ public class PulsarListenerContainer {
     }
 
     /**
-     * 处理消息
+     * Process message with consumer and message
      */
     public void processMessage(Consumer<byte[]> consumer, Message<byte[]> message) {
 
@@ -141,7 +158,7 @@ public class PulsarListenerContainer {
         Exception processException = null;
 
         try {
-            // 执行接收前拦截器
+            // Execute before-receive interceptors
             if (!pulsarTemplate.applyBeforeReceiveInterceptors(message)) {
                 logger.debug("Message filtered by beforeReceive interceptor");
                 if (autoAck) {
@@ -153,19 +170,19 @@ public class PulsarListenerContainer {
             String msgRoute = pulsarTemplate.deserializeMsgRoute(message.getData(), getRouteToKey());
             Handler handler = this.handlerMap.get(msgRoute);
             if (handler == null) {
-                throw new UnsupportedOperationException(msgRoute + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
+                throw new UnsupportedOperationException("Business type not supported for route: " + msgRoute + ", no corresponding consumer, message content: " + new String(message.getData()));
             }
             Method method = handler.method;
             if (method == null) {
-                throw new UnsupportedOperationException(msgRoute + "业务类型不支持，没有对应的消费者，消息内容：" + new String(message.getData()));
+                throw new UnsupportedOperationException("Business type not supported for route: " + msgRoute + ", no corresponding consumer, message content: " + new String(message.getData()));
             }
             String dataKey = handler.dataKey;
             deserializedMessage = pulsarTemplate.deserialize(message.getData(), dataKey, handler.messageType);
 
-            // 调用监听器方法
+            // Invoke listener method
             ReflectionUtils.makeAccessible(method);
 
-            // 根据方法参数决定传递什么
+            // Decide what to pass based on method parameters
             Class<?>[] parameterTypes = method.getParameterTypes();
             Object[] args;
 
@@ -179,7 +196,7 @@ public class PulsarListenerContainer {
 
             method.invoke(handler.bean, args);
 
-            // 自动确认消息
+            // Auto-acknowledge message
             if (autoAck && consumer.isConnected()) {
                 consumer.acknowledge(message);
             }
@@ -198,18 +215,18 @@ public class PulsarListenerContainer {
                 logger.error("Error negative acknowledging message", ackException);
             }
         } finally {
-            // 执行接收后拦截器
+            // Execute after-receive interceptors
             pulsarTemplate.applyAfterReceiveInterceptors(message, deserializedMessage, processException);
         }
     }
 
-    /*** 忽略格式错误，无法解析的消息 */
+    /** Ignore messages with format errors that cannot be parsed */
     private void ignore(Consumer<byte[]> consumer, Message<byte[]> message) {
         if (consumer.isConnected()) {
             try {
                 consumer.acknowledge(message);
             } catch (PulsarClientException e) {
-                throw new PulsarConsumeReceiveException("消费消息异常", e);
+                throw new PulsarConsumeReceiveException("Message consumption exception", e);
             }
         }
     }
@@ -220,7 +237,7 @@ public class PulsarListenerContainer {
             consumer.reconsumeLater(msg, 60, TimeUnit.SECONDS);
         } catch (PulsarClientException ex) {
             consumer.negativeAcknowledge(msg);
-            logger.error("消息重试异常", ex);
+            logger.error("Message retry exception", ex);
         }
     }
 
@@ -233,7 +250,7 @@ public class PulsarListenerContainer {
                         annotation.messageType()));
     }
 
-    /*** 根据 路由 获取 路由的key */
+    /** Get route key based on route */
     private Map<String, String> getRouteToKey() {
         if (routeToKey != null) {
             return routeToKey;
@@ -246,12 +263,12 @@ public class PulsarListenerContainer {
     }
 
     /**
-     * 处理器信息
+     * Handler information
      *
-     * @param msgRouteKey 消息业务键 映射 msgRouteKey 的字段名字
-     * @param dataKey     数据键 映射 data 数据 的字段名字
-     * @param method      方法 映射key 到 method
-     * @param messageType 消息类型
+     * @param msgRouteKey Message business key mapping to msgRouteKey field name
+     * @param dataKey     Data key mapping to data field name
+     * @param method      Method mapping key to method
+     * @param messageType Message type
      */
     private record Handler(String msgRouteKey, String dataKey,
                            Object bean,

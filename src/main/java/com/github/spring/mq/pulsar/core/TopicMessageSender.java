@@ -6,61 +6,71 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 多 producer Pulsar 消息发送器实现
- * <p>
- * 基于 topic 的消息发送器
+ * Multi-producer Pulsar message sender interface
+ * 
+ * <p>Topic-based message sender that provides a convenient abstraction
+ * for sending messages to a specific topic. This interface is designed
+ * for scenarios where multiple producers are needed for different topics.
+ * 
+ * <p>Features:
+ * <ul>
+ *   <li>Topic-specific message sending</li>
+ *   <li>Message routing support</li>
+ *   <li>Synchronous and asynchronous operations</li>
+ *   <li>Delayed and scheduled message delivery</li>
+ * </ul>
  *
  * @author avinzhang
  * @since 1.0.0
  */
 public interface TopicMessageSender {
     /**
-     * 注入 PulsarTemplate
+     * Inject PulsarMessageSender
      */
     void setPulsarMessageSender(PulsarMessageSender pulsarMessageSender);
 
     /**
-     * 设置 topic
+     * Set topic name
      */
     void setTopic(String topic);
 
     /**
-     * 发送消息
+     * Send message
      */
     MessageId send(Object message);
 
     MessageId send(Object message, String msgRoute);
 
     /**
-     * 发送消息
+     * Send message with key
      */
     MessageId send(String key, Object message);
 
     MessageId send(String key, Object message, String msgRoute);
 
     /**
-     * 异步发送消息
+     * Send message asynchronously
      */
     CompletableFuture<MessageId> sendAsync(Object message);
 
     CompletableFuture<MessageId> sendAsync(Object message, String msgRoute);
 
     /**
-     * 异步发送消息
+     * Send message asynchronously with key
      */
     CompletableFuture<MessageId> sendAsync(String key, Object message);
 
     CompletableFuture<MessageId> sendAsync(String key, Object message, String msgRoute);
 
     /**
-     * 发送延时消息
+     * Send delayed message
      */
     MessageId sendAfter(Object message, long delay, TimeUnit unit);
 
     MessageId sendAfter(Object message, String msgRoute, long delay, TimeUnit unit);
 
     /**
-     * 发送延时消息
+     * Send message at specified timestamp
      */
     MessageId sendAt(Object message, long timestamp);
 

@@ -3,9 +3,22 @@ package com.github.spring.mq.pulsar.annotation;
 import java.lang.annotation.*;
 
 /**
- * Pulsar 监听器注解
+ * Pulsar listener annotation
+ * 
+ * <p>This annotation is used to mark methods as Pulsar message listeners.
+ * Methods annotated with @PulsarListener will automatically consume messages
+ * from the specified topic.
+ *
+ * <p>Example usage:
+ * <pre>
+ * &#64;PulsarListener(topic = "my-topic", subscription = "my-subscription")
+ * public void handleMessage(String message) {
+ *     // Process the message
+ * }
+ * </pre>
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
@@ -13,41 +26,45 @@ import java.lang.annotation.*;
 public @interface PulsarListener {
 
     /**
-     * 主题名称
+     * Topic name
      */
     String topic() default "";
 
     /**
-     * 消息路由
+     * Message routing
      * <p>
-     * 注解消息处理器方法，可以按照消息体中 routeKey 指定的字段，映射处理器方法
+     * Annotates message handler methods, can map handler methods according to 
+     * the field specified by routeKey in the message body
      */
     String msgRoute() default "";
 
     /**
-     * 消息路由键，默认msgRoute
+     * Message routing key, default is msgRoute
      * <p>
-     * 同一个 topic 下，可能有多个细分业务类型
-     * 使用 routeKey 来区分，解析的时候按照 routeKey 指定的字段，寻找对应的消息处理器
+     * Under the same topic, there may be multiple subdivided business types.
+     * Use routeKey to distinguish, when parsing, find the corresponding message 
+     * handler according to the field specified by routeKey
      */
     String routeKey() default "msgRoute";
 
     /**
-     * 数据键，默认data
+     * Data key, default is data
      * <p>
-     * 消息实体有一个统一包装类，包装类包含消息的一些元信息
-     * 消息本身会在 dataKey 字段中，解析的时候只需要解析 dataKey 指定的字段 即可
+     * Message entity has a unified wrapper class, the wrapper class contains 
+     * some meta information of the message. The message itself will be in the 
+     * dataKey field, only need to parse the field specified by dataKey when parsing
      */
     String dataKey() default "data";
 
     /**
-     * 消费者名称
-     * 标识消费者实例，在分布式系统中做日志标识，不对消息消费产生影响
+     * Consumer name
+     * Identifies consumer instances, used for log identification in distributed 
+     * systems, does not affect message consumption
      */
     String consumerName() default "";
 
     /**
-     * 消息类型
+     * Message type
      */
     Class<?> messageType() default String.class;
 }

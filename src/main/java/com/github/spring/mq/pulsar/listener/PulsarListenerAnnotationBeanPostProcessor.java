@@ -16,72 +16,73 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Pulsar 监听器注解处理器
+ * Pulsar listener annotation processor
  *
- * <p>这是一个 Spring Bean 后置处理器，负责扫描和处理带有 @PulsarListener 注解的方法。
- * 它的主要职责是：
+ * <p>This is a Spring Bean post-processor responsible for scanning and processing
+ * methods annotated with @PulsarListener. Its main responsibilities are:
  * <ul>
- *   <li>在 Spring 容器初始化 Bean 后，扫描 Bean 中的所有方法</li>
- *   <li>找到带有 @PulsarListener 注解的方法</li>
- *   <li>为每个监听器方法创建对应的 Pulsar 消费者容器</li>
- *   <li>启动消费者容器开始监听消息</li>
- *   <li>在应用关闭时清理所有容器资源</li>
+ *   <li>Scan all methods in beans after Spring container initialization</li>
+ *   <li>Find methods annotated with @PulsarListener</li>
+ *   <li>Create corresponding Pulsar consumer containers for each listener method</li>
+ *   <li>Start consumer containers to begin listening for messages</li>
+ *   <li>Clean up all container resources when application shuts down</li>
  * </ul>
  *
- * <p>工作流程：
+ * <p>Workflow:
  * <pre>
- * 1. Spring 容器创建 Bean 实例
- * 2. 调用 postProcessAfterInitialization() 方法
- * 3. 扫描 Bean 的所有方法，查找 @PulsarListener 注解
- * 4. 为每个监听器方法创建 PulsarListenerContainer
- * 5. 启动容器开始消费消息
- * 6. 应用关闭时调用 destroy() 方法清理资源
+ * 1. Spring container creates Bean instances
+ * 2. Call postProcessAfterInitialization() method
+ * 3. Scan all methods in Bean, look for @PulsarListener annotations
+ * 4. Create PulsarListenerContainer for each listener method
+ * 5. Start containers to begin consuming messages
+ * 6. Call destroy() method to clean up resources when application shuts down
  * </pre>
  *
  * @author avinzhang
- * @see BeanPostProcessor Spring Bean 后置处理器接口
- * @see BeanFactoryAware 用于获取 BeanFactory 引用
- * @see DisposableBean 用于在 Bean 销毁时清理资源
- * @see PulsarListener 监听器注解
- * @see PulsarListenerContainer 监听器容器
+ * @since 1.0.0
+ * @see BeanPostProcessor Spring Bean post-processor interface
+ * @see BeanFactoryAware Used to get BeanFactory reference
+ * @see DisposableBean Used to clean up resources when Bean is destroyed
+ * @see PulsarListener Listener annotation
+ * @see PulsarListenerContainer Listener container
  */
 public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProcessor, BeanFactoryAware, DisposableBean {
 
     private static final Logger logger = LoggerFactory.getLogger(PulsarListenerAnnotationBeanPostProcessor.class);
 
     /**
-     * 监听器容器工厂，用于创建 PulsarListenerContainer 实例
-     * 每个带有 @PulsarListener 注解的方法都会通过这个工厂创建一个对应的容器
+     * Listener container factory used to create PulsarListenerContainer instances
+     * Each method annotated with @PulsarListener will create a corresponding container through this factory
      */
     private final PulsarListenerContainerFactory containerFactory;
 
     /**
-     * 存储所有创建的监听器容器
-     * 一个 topic，也即一个 Consume，一个监听器
+     * Store all created listener containers
+     * One topic, one consumer, one listener
      */
     private final ConcurrentHashMap<String, PulsarListenerContainer> containers = new ConcurrentHashMap<>();
 
     /**
-     * Spring Bean 工厂引用
-     * 可以用于获取其他 Bean 实例（虽然在当前实现中暂未使用）
+     * Spring Bean factory reference
+     * Can be used to get other Bean instances (although not currently used in this implementation)
      */
     private BeanFactory beanFactory;
 
     /**
-     * 构造函数
+     * Constructor
      *
-     * @param containerFactory 监听器容器工厂，用于创建监听器容器
+     * @param containerFactory Listener container factory used to create listener containers
      */
     public PulsarListenerAnnotationBeanPostProcessor(PulsarListenerContainerFactory containerFactory) {
         this.containerFactory = containerFactory;
     }
 
     /**
-     * 实现 BeanFactoryAware 接口的方法
-     * Spring 容器会自动调用此方法，注入 BeanFactory 实例
+     * Implementation of BeanFactoryAware interface method
+     * Spring container will automatically call this method to inject BeanFactory instance
      *
-     * @param beanFactory Spring Bean 工厂
-     * @throws BeansException 如果设置过程中出现异常
+     * @param beanFactory Spring Bean factory
+     * @throws BeansException if an exception occurs during the setting process
      */
     @Override
     public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
@@ -89,75 +90,75 @@ public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProces
     }
 
     /**
-     * Bean 后置处理器的核心方法
+     * Core method of Bean post-processor
      *
-     * <p>在每个 Bean 完成初始化后被调用，用于扫描和处理 @PulsarListener 注解。
-     * 这个方法会：
+     * <p>Called after each Bean completes initialization, used to scan and process @PulsarListener annotations.
+     * This method will:
      * <ol>
-     *   <li>获取 Bean 的 Class 对象</li>
-     *   <li>遍历 Bean 的所有方法（包括继承的方法）</li>
-     *   <li>检查每个方法是否有 @PulsarListener 注解</li>
-     *   <li>如果有注解，则创建对应的监听器容器</li>
+     *   <li>Get the Bean's Class object</li>
+     *   <li>Iterate through all methods of the Bean (including inherited methods)</li>
+     *   <li>Check if each method has @PulsarListener annotation</li>
+     *   <li>If annotated, create corresponding listener container</li>
      * </ol>
      *
-     * @param bean     Spring 容器中的 Bean 实例
-     * @param beanName Bean 的名称
-     * @return 返回原始的 Bean 实例（不做任何修改）
-     * @throws BeansException 如果处理过程中出现异常
+     * @param bean     Bean instance in Spring container
+     * @param beanName Bean name
+     * @return Return original Bean instance (no modifications)
+     * @throws BeansException if an exception occurs during processing
      */
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-        // 获取 Bean 的实际类型（可能是代理类，需要获取目标类）
+        // Get the actual type of Bean (may be proxy class, need to get target class)
         Class<?> targetClass = bean.getClass();
 
-        // 使用 Spring 的反射工具遍历所有方法
-        // ReflectionUtils.doWithMethods 会遍历类及其父类的所有方法
+        // Use Spring's reflection utilities to iterate through all methods
+        // ReflectionUtils.doWithMethods will iterate through all methods of the class and its parent classes
         ReflectionUtils.doWithMethods(targetClass, method -> {
-            // 查找方法上的 @PulsarListener 注解
-            // AnnotationUtils.findAnnotation 会在方法、类、接口上查找注解
+            // Find @PulsarListener annotation on method
+            // AnnotationUtils.findAnnotation will search for annotations on methods, classes, interfaces
             PulsarListener annotation = AnnotationUtils.findAnnotation(method, PulsarListener.class);
             if (annotation != null) {
-                // 如果找到注解，处理这个监听器方法
+                // If annotation found, process this listener method
                 processListenerMethod(bean, method, annotation);
             }
         });
 
-        // 返回原始 Bean，不做任何修改
+        // Return original Bean without any modifications
         return bean;
     }
 
     /**
-     * 处理单个监听器方法
+     * Process single listener method
      *
-     * <p>为带有 @PulsarListener 注解的方法创建监听器容器并启动。
-     * 这个方法会：
+     * <p>Create and start listener container for methods annotated with @PulsarListener.
+     * This method will:
      * <ol>
-     *   <li>通过容器工厂创建 PulsarListenerContainer</li>
-     *   <li>将容器添加到管理列表中</li>
-     *   <li>启动容器开始监听消息</li>
-     *   <li>记录日志信息</li>
+     *   <li>Create PulsarListenerContainer through container factory</li>
+     *   <li>Add container to management list</li>
+     *   <li>Start container to begin listening for messages</li>
+     *   <li>Log information</li>
      * </ol>
      *
-     * @param bean       包含监听器方法的 Bean 实例
-     * @param method     带有 @PulsarListener 注解的方法
-     * @param annotation @PulsarListener 注解实例，包含配置信息
-     * @throws PulsarClientInitException 如果创建或启动容器失败
+     * @param bean       Bean instance containing listener method
+     * @param method     Method annotated with @PulsarListener
+     * @param annotation @PulsarListener annotation instance containing configuration information
+     * @throws PulsarClientInitException if creating or starting container fails
      */
     private void processListenerMethod(Object bean, Method method, PulsarListener annotation) {
         try {
             PulsarListenerContainer container = containers.get(annotation.topic());
             if (container == null) {
-                // 通过工厂创建监听器容器
-                // 容器会封装 Pulsar Consumer 和消息处理逻辑
+                // Create listener container through factory
+                // Container will encapsulate Pulsar Consumer and message processing logic
                 container = containerFactory.createContainer(bean, method, annotation);
                 if (!containers.contains(container)) {
-                    // 将容器添加到管理列表，用于后续的生命周期管理
+                    // Add container to management list for subsequent lifecycle management
                     containers.put(annotation.topic(), container);
 
-                    // 启动容器，开始监听指定 topic 的消息
+                    // Start container, begin listening for messages on specified topic
                     container.start();
 
-                    // 记录成功创建监听器的日志
+                    // Log successful listener creation
                     logger.info("Created Pulsar listener for method: {} on topic: {}",
                             method.getName(), annotation.topic());
                 }
@@ -165,36 +166,36 @@ public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProces
                 container.addMethod(bean, method, annotation);
             }
         } catch (Exception e) {
-            // 记录错误日志并抛出运行时异常
+            // Log error and throw runtime exception
             logger.error("Failed to create Pulsar listener for method: " + method.getName(), e);
             throw new PulsarClientInitException("Failed to create Pulsar listener for method: " + method.getName(), e);
         }
     }
 
     /**
-     * 实现 DisposableBean 接口的方法
+     * Implementation of DisposableBean interface method
      *
-     * <p>在 Spring 容器关闭时被调用，用于清理所有监听器容器资源。
-     * 这个方法会：
+     * <p>Called when Spring container shuts down, used to clean up all listener container resources.
+     * This method will:
      * <ol>
-     *   <li>遍历所有创建的监听器容器</li>
-     *   <li>调用每个容器的 stop() 方法停止消费</li>
-     *   <li>清空容器列表</li>
+     *   <li>Iterate through all created listener containers</li>
+     *   <li>Call stop() method of each container to stop consumption</li>
+     *   <li>Clear container list</li>
      * </ol>
      *
-     * <p>这确保了：
+     * <p>This ensures:
      * <ul>
-     *   <li>Pulsar Consumer 被正确关闭</li>
-     *   <li>网络连接被释放</li>
-     *   <li>线程资源被清理</li>
-     *   <li>避免资源泄漏</li>
+     *   <li>Pulsar Consumer is properly closed</li>
+     *   <li>Network connections are released</li>
+     *   <li>Thread resources are cleaned up</li>
+     *   <li>Resource leaks are avoided</li>
      * </ul>
      */
     @Override
     public void destroy() {
         logger.info("Destroying {} Pulsar listener containers", containers.size());
 
-        // 停止所有监听器容器
+        // Stop all listener containers
         for (PulsarListenerContainer container : containers.values()) {
             try {
                 container.stop();
@@ -204,7 +205,7 @@ public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProces
             }
         }
 
-        // 清空容器列表
+        // Clear container list
         containers.clear();
         logger.info("All Pulsar listener containers have been destroyed");
     }

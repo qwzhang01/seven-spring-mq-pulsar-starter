@@ -5,7 +5,20 @@ import org.apache.pulsar.client.api.transaction.Transaction;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Pulsar 事务工具类
+ * Pulsar transaction utilities
+ * 
+ * <p>This utility class provides convenient methods for working with
+ * Pulsar transactions in a Spring-managed environment. It integrates
+ * with Spring's transaction management infrastructure to provide
+ * seamless transaction support.
+ * 
+ * <p>Features:
+ * <ul>
+ *   <li>Current transaction retrieval</li>
+ *   <li>Transaction status checking</li>
+ *   <li>Transaction ID extraction</li>
+ *   <li>Integration with Spring TransactionSynchronizationManager</li>
+ * </ul>
  *
  * @author avinzhang
  * @since 1.0.0
@@ -13,16 +26,16 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class PulsarTransactionUtils {
 
     /**
-     * 获取当前线程绑定的 Pulsar 事务
+     * Get current thread-bound Pulsar transaction
      *
-     * @return 当前事务，如果没有事务则返回 null
+     * @return Current transaction, or null if no transaction is active
      */
     public static Transaction getCurrentTransaction() {
         if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             return null;
         }
 
-        // 从事务同步管理器中获取事务资源
+        // Get transaction resource from transaction synchronization manager
         Object resource = TransactionSynchronizationManager.getResourceMap().values()
                 .stream()
                 .filter(r -> r instanceof PulsarTransactionConfiguration.PulsarTransactionHolder)
@@ -37,18 +50,18 @@ public class PulsarTransactionUtils {
     }
 
     /**
-     * 检查当前是否存在 Pulsar 事务
+     * Check if Pulsar transaction is currently active
      *
-     * @return 如果存在事务返回 true，否则返回 false
+     * @return true if transaction exists, false otherwise
      */
     public static boolean isTransactionActive() {
         return getCurrentTransaction() != null;
     }
 
     /**
-     * 获取当前事务的 ID
+     * Get current transaction ID
      *
-     * @return 事务 ID，如果没有事务则返回 null
+     * @return Transaction ID, or null if no transaction is active
      */
     public static String getCurrentTransactionId() {
         Transaction transaction = getCurrentTransaction();

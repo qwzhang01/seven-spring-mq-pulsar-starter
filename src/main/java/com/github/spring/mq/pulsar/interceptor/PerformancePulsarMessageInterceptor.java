@@ -6,9 +6,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 性能监控拦截器
+ * Performance monitoring interceptor
+ * 
+ * <p>This interceptor measures the time taken for message sending and processing
+ * operations. It provides performance metrics by logging the duration of:
+ * <ul>
+ *   <li>Message send operations</li>
+ *   <li>Message receive and processing operations</li>
+ * </ul>
+ * 
+ * <p>The interceptor uses ThreadLocal to ensure accurate timing measurements
+ * in multi-threaded environments and has the highest priority to ensure
+ * accurate time measurement.
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public class PerformancePulsarMessageInterceptor implements PulsarMessageInterceptor {
 
@@ -27,7 +39,7 @@ public class PerformancePulsarMessageInterceptor implements PulsarMessageInterce
         Long start = startTime.get();
         if (start != null) {
             long duration = System.currentTimeMillis() - start;
-            logger.info("消息发送耗时: " + duration + "ms, 主题: " + topic);
+            logger.info("Message send duration: {}ms, Topic: {}", duration, topic);
             startTime.remove();
         }
     }
@@ -43,14 +55,14 @@ public class PerformancePulsarMessageInterceptor implements PulsarMessageInterce
         Long start = startTime.get();
         if (start != null) {
             long duration = System.currentTimeMillis() - start;
-            logger.info("消息处理耗时: " + duration + "ms, 主题: " + message.getTopicName());
+            logger.info("Message processing duration: {}ms, Topic: {}", duration, message.getTopicName());
             startTime.remove();
         }
     }
 
     @Override
     public int getOrder() {
-        // 最高优先级，确保能准确测量时间
+        // Highest priority to ensure accurate time measurement
         return 10;
     }
 }

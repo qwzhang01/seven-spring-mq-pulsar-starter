@@ -10,7 +10,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Pulsar 配置属性
+ * Pulsar configuration properties
+ * 
+ * <p>This class contains all configuration properties for Pulsar integration.
+ * It supports configuration for producers, consumers, clients, transactions,
+ * dead letter queues, and other Pulsar features.
+ *
+ * @author avinzhang
+ * @since 1.0.0
  */
 @ConfigurationProperties(prefix = "spring.pulsar")
 public class PulsarProperties {
@@ -18,43 +25,43 @@ public class PulsarProperties {
     private boolean enabled = true;
 
     /**
-     * Pulsar 服务地址
+     * Pulsar service URL
      */
     private String serviceUrl = "pulsar://localhost:6650";
 
     /**
-     * 认证配置
+     * Authentication configuration
      */
     private Authentication authentication = new Authentication();
 
     /**
-     * 生产者配置
+     * Producer configuration
      */
     private Producer producer = new Producer();
     /**
-     * 多个生产者
+     * Multiple producers configuration
      */
     @NestedConfigurationProperty
     private Map<String, Producer> producerMap = new HashMap<>();
 
     /**
-     * 消费者配置
+     * Consumer configuration
      */
     private Consumer consumer = new Consumer();
 
     /**
-     * 多个消费者
+     * Multiple consumers configuration
      */
     @NestedConfigurationProperty
     private Map<String, Consumer> consumerMap = new HashMap<>();
 
     /**
-     * 客户端配置
+     * Client configuration
      */
     private Client client = new Client();
 
     /**
-     * 事务配置
+     * Transaction configuration
      */
     private Transaction transaction = new Transaction();
 
@@ -141,7 +148,7 @@ public class PulsarProperties {
     }
 
     /**
-     * 校验配置参数是否合法
+     * Validate configuration parameters
      */
     public void valid() {
         validProduce();
@@ -153,7 +160,7 @@ public class PulsarProperties {
         Map<String, Consumer> consumerMap = getConsumerMap();
         if (consumer != null && consumerMap != null) {
             if (StringUtils.isNotBlank(consumer.getTopic()) && !consumerMap.isEmpty()) {
-                throw new PulsarConfigUnsupportedException("单消费者与多消费者无法同时配置，请只配置其中一个后再启动");
+                throw new PulsarConfigUnsupportedException("Single consumer and multiple consumers cannot be configured simultaneously, please configure only one before starting");
             }
         }
     }
@@ -163,13 +170,13 @@ public class PulsarProperties {
         Map<String, Producer> producerMap = getProducerMap();
         if (producer != null && producerMap != null) {
             if (StringUtils.isNotBlank(producer.getTopic()) && !producerMap.isEmpty()) {
-                throw new PulsarConfigUnsupportedException("单生产者与多生产者无法同时配置，请只配置其中一个后再启动");
+                throw new PulsarConfigUnsupportedException("Single producer and multiple producers cannot be configured simultaneously, please configure only one before starting");
             }
         }
     }
 
     /**
-     * 认证配置
+     * Authentication configuration
      */
     public static class Authentication {
         private boolean enabled = true;
@@ -211,7 +218,7 @@ public class PulsarProperties {
     }
 
     /**
-     * 生产者配置
+     * Producer configuration
      */
     public static class Producer {
         private String topic;
@@ -280,7 +287,7 @@ public class PulsarProperties {
     }
 
     /**
-     * 消费者配置
+     * Consumer configuration
      */
     public static class Consumer {
 
@@ -288,40 +295,40 @@ public class PulsarProperties {
         private String retryTopic;
         private String deadTopic;
         /**
-         * 同一个消息，不同业务区分使用的字段
+         * Field used to distinguish different business types for the same message
          */
         private String businessKey = "businessPath";
 
         private String subscriptionName = "sub1";
         private String deadTopicSubscriptionName = "sub1";
         /**
-         * 订阅模式 Exclusive,Shared,Failover,Key_Shared
+         * Subscription type: Exclusive, Shared, Failover, Key_Shared
          */
         private String subscriptionType = "Shared";
         /**
-         * 创建新订阅的消费模式，Earliest, Latest
+         * Subscription initial position for new subscriptions: Earliest, Latest
          */
         private String subscriptionInitialPosition = "Earliest";
         private boolean autoAck = true;
         /**
-         * 最大重试次数，超过后进入死信队列
+         * Maximum retry count, messages enter dead letter queue after exceeding this limit
          */
         private int retryTime = 3;
         /**
-         * 没有Ack的消息，默认30秒后重新消费
+         * Messages without Ack will be redelivered after 30 seconds by default
          */
         private Duration ackTimeout = Duration.ofSeconds(30);
         /**
-         * Sets the size of the consumer receive queue.
+         * Sets the size of the consumer receive queue
          */
         private int receiverQueueSize = 1000;
         /**
-         * negativeAck的消息，重新消费延迟时间
-         * 默认1000毫秒
+         * Redelivery delay time for negativeAck messages
+         * Default is 1000 milliseconds
          */
         private int negativeAckRedeliveryDelay = 1000;
         /**
-         * 消息重新消费延迟时间
+         * Message redelivery delay time
          */
         private int timeToReconsumeDelay = 1000;
 
@@ -449,7 +456,7 @@ public class PulsarProperties {
     }
 
     /**
-     * 客户端配置
+     * Client configuration
      */
     public static class Client {
         private Duration operationTimeout = Duration.ofSeconds(30);
@@ -491,41 +498,41 @@ public class PulsarProperties {
     }
 
     /**
-     * 事务配置
+     * Transaction configuration
      */
     public static class Transaction {
         /**
-         * 是否启用事务
+         * Whether to enable transactions
          */
         private boolean enabled = false;
 
         /**
-         * 事务协调器主题
+         * Transaction coordinator topic
          */
         private String coordinatorTopic = "persistent://pulsar/system/transaction_coordinator_assign";
 
         /**
-         * 事务超时时间
+         * Transaction timeout
          */
         private Duration timeout = Duration.ofMinutes(1);
 
         /**
-         * 事务缓冲区快照段大小
+         * Transaction buffer snapshot segment size
          */
         private int bufferSnapshotSegmentSize = 1024 * 1024; // 1MB
 
         /**
-         * 事务缓冲区快照最小时间间隔
+         * Transaction buffer snapshot minimum time interval
          */
         private Duration bufferSnapshotMinTimeInMillis = Duration.ofSeconds(5);
 
         /**
-         * 事务缓冲区快照最大事务数
+         * Transaction buffer snapshot maximum transaction count
          */
         private int bufferSnapshotMaxTransactionCount = 1000;
 
         /**
-         * 事务日志存储大小
+         * Transaction log store size
          */
         private long logStoreSize = 1024 * 1024 * 1024L; // 1GB
 
@@ -588,37 +595,37 @@ public class PulsarProperties {
 
 
     /**
-     * 死信队列配置属性
+     * Dead letter queue configuration properties
      */
     public static class DeadLetterQueueProperties {
 
         /**
-         * 死信队列主题后缀
+         * Dead letter queue topic suffix
          */
         private String topicSuffix = "-DLQ";
 
         /**
-         * 最大重试次数
+         * Maximum retry count
          */
         private int maxRetries = 3;
 
         /**
-         * 重试配置
+         * Retry configuration
          */
         private Retry retry = new Retry();
 
         /**
-         * 清理配置
+         * Cleanup configuration
          */
         private Cleanup cleanup = new Cleanup();
 
         /**
-         * 监控配置
+         * Monitoring configuration
          */
         private Monitoring monitoring = new Monitoring();
 
         /**
-         * 统计配置
+         * Statistics configuration
          */
         private Statistics statistics = new Statistics();
 

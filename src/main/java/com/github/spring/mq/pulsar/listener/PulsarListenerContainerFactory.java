@@ -12,9 +12,22 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Pulsar 监听器容器工厂
+ * Pulsar listener container factory
+ * 
+ * <p>This factory class is responsible for creating and managing PulsarListenerContainer instances.
+ * It handles the creation of containers for methods annotated with @PulsarListener and manages
+ * the associated Pulsar consumers.
+ * 
+ * <p>Features:
+ * <ul>
+ *   <li>Container creation and caching</li>
+ *   <li>Consumer configuration management</li>
+ *   <li>Multiple listeners per topic support</li>
+ *   <li>Automatic consumer lifecycle management</li>
+ * </ul>
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public class PulsarListenerContainerFactory {
 
@@ -31,7 +44,16 @@ public class PulsarListenerContainerFactory {
     }
 
     /**
-     * 创建监听器容器
+     * Create listener container
+     * 
+     * <p>Creates a new PulsarListenerContainer for the given bean method and annotation.
+     * If a container already exists for the topic, the method will be added to the existing container.
+     * 
+     * @param bean Bean instance containing the listener method
+     * @param method Listener method annotated with @PulsarListener
+     * @param annotation PulsarListener annotation containing configuration
+     * @return PulsarListenerContainer instance
+     * @throws IllegalArgumentException if consumer property or topic is null
      */
     public PulsarListenerContainer createContainer(Object bean, Method method,
                                                    PulsarListener annotation) {

@@ -7,18 +7,18 @@ import org.springframework.context.annotation.Import;
 import java.lang.annotation.*;
 
 /**
- * 启用 Pulsar 功能的注解
+ * Annotation to enable Pulsar functionality
  *
- * <p>使用此注解可以启用 Pulsar 的自动配置功能，包括：
+ * <p>Using this annotation enables Pulsar auto-configuration features, including:
  * <ul>
- *   <li>Pulsar 客户端自动配置</li>
- *   <li>消息生产者和消费者</li>
- *   <li>监听器容器</li>
- *   <li>事务支持</li>
- *   <li>健康检查</li>
+ *   <li>Pulsar client auto-configuration</li>
+ *   <li>Message producers and consumers</li>
+ *   <li>Listener containers</li>
+ *   <li>Transaction support</li>
+ *   <li>Health checks</li>
  * </ul>
  *
- * <p>示例用法：
+ * <p>Example usage:
  * <pre>
  * &#64;SpringBootApplication
  * &#64;EnablePulsar
@@ -39,43 +39,43 @@ import java.lang.annotation.*;
 public @interface EnablePulsar {
 
     /**
-     * 是否启用 Pulsar 功能
-     * 默认为 true，可以通过 spring.pulsar.enabled 配置项覆盖
+     * Whether to enable Pulsar functionality
+     * Default is true, can be overridden by spring.pulsar.enabled configuration
      */
     boolean enabled() default true;
 
     /**
-     * 是否启用事务支持
-     * 默认为 false，启用后可以使用 @Transactional 注解
+     * Whether to enable transaction support
+     * Default is false, when enabled, @Transactional annotation can be used
      */
     boolean enableTransaction() default false;
 
     /**
-     * 是否启用健康检查
-     * 默认为 true，会注册 Pulsar 健康检查端点
+     * Whether to enable health checks
+     * Default is true, will register Pulsar health check endpoints
      */
     boolean enableHealthCheck() default true;
 
     /**
-     * 是否启用消息拦截器
-     * 默认为 true，可以注册自定义的消息拦截器
+     * Whether to enable message interceptors
+     * Default is true, allows registration of custom message interceptors
      */
     boolean enableInterceptor() default true;
 
     /**
-     * 是否启用默认日志拦截器
+     * Whether to enable default logging interceptor
      */
     boolean enableLogInterceptor() default false;
 
     /**
-     * 是否启用默认性能拦截器
+     * Whether to enable default performance interceptor
      */
     boolean enablePerformanceInterceptor() default false;
 
     /**
-     * 监听器类型
+     * Listener type
      * <p>
-     * 默认使用 监听器事件模式
+     * Default uses listener event mode
      */
     ListenerType listenerType() default ListenerType.LOOP;
 }

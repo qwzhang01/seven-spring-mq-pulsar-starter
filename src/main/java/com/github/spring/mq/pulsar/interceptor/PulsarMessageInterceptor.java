@@ -4,8 +4,20 @@ import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 
 /**
- * Pulsar 消息拦截器接口
- * 可以在消息发送和接收过程中进行拦截处理
+ * Pulsar message interceptor interface
+ * 
+ * <p>This interface allows intercepting and processing messages during the send and receive process.
+ * Interceptors can be used for various purposes such as:
+ * <ul>
+ *   <li>Message transformation and validation</li>
+ *   <li>Logging and monitoring</li>
+ *   <li>Security and authentication</li>
+ *   <li>Message filtering and routing</li>
+ *   <li>Error handling and retry logic</li>
+ * </ul>
+ * 
+ * <p>Interceptors are executed in order based on their priority (lower values = higher priority).
+ * Multiple interceptors can be chained together to form a processing pipeline.
  *
  * @author avinzhang
  * @since 1.0.0
@@ -13,54 +25,54 @@ import org.apache.pulsar.client.api.MessageId;
 public interface PulsarMessageInterceptor {
 
     /**
-     * 发送消息前拦截
+     * Intercept before sending message
      *
-     * @param topic   主题名称
-     * @param message 消息内容
-     * @return 处理后的消息内容，返回 null 则不发送消息
+     * @param topic   Topic name
+     * @param message Message content
+     * @return Processed message content, return null to skip sending
      */
     default Object beforeSend(String topic, Object message) {
         return message;
     }
 
     /**
-     * 发送消息后拦截
+     * Intercept after sending message
      *
-     * @param topic     主题名称
-     * @param message   消息内容
-     * @param messageId 消息ID
-     * @param exception 发送异常（如果有）
+     * @param topic     Topic name
+     * @param message   Message content
+     * @param messageId Message ID
+     * @param exception Send exception (if any)
      */
     default void afterSend(String topic, Object message, MessageId messageId, Throwable exception) {
-        // 默认空实现
+        // Default empty implementation
     }
 
     /**
-     * 接收消息前拦截
+     * Intercept before receiving message
      *
-     * @param message 原始消息
-     * @return 是否继续处理消息
+     * @param message Original message
+     * @return Whether to continue processing the message
      */
     default boolean beforeReceive(Message<?> message) {
         return true;
     }
 
     /**
-     * 接收消息后拦截
+     * Intercept after receiving message
      *
-     * @param message          原始消息
-     * @param processedMessage 处理后的消息内容
-     * @param exception        处理异常（如果有）
+     * @param message          Original message
+     * @param processedMessage Processed message content
+     * @param exception        Processing exception (if any)
      */
     default void afterReceive(Message<?> message, Object processedMessage, Exception exception) {
-        // 默认空实现
+        // Default empty implementation
     }
 
     /**
-     * 获取拦截器优先级
-     * 数值越小优先级越高
+     * Get interceptor priority
+     * Lower values indicate higher priority
      *
-     * @return 优先级
+     * @return Priority value
      */
     default int getOrder() {
         return 0;

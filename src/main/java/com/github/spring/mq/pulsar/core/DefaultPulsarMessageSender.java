@@ -10,7 +10,17 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 默认的 Pulsar 消息发送器实现
+ * Default implementation of Pulsar message sender
+ * 
+ * <p>This class provides a concrete implementation of the {@link PulsarMessageSender} interface,
+ * offering various methods for sending messages to Pulsar topics. It supports:
+ * <ul>
+ *   <li>Synchronous and asynchronous message sending</li>
+ *   <li>Delayed message delivery</li>
+ *   <li>Scheduled message delivery</li>
+ *   <li>Message sending with custom keys</li>
+ *   <li>Transaction message support (planned)</li>
+ * </ul>
  *
  * @author avinzhang
  * @since 1.0.0
@@ -97,7 +107,7 @@ public class DefaultPulsarMessageSender implements PulsarMessageSender {
 
     @Override
     public MessageId sendInTransaction(String topic, Object message) {
-        // TODO: 实现事务消息发送
+        // TODO: Implement transaction message sending
         throw new UnsupportedOperationException("Transaction message not implemented yet");
     }
 }

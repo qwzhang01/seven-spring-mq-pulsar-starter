@@ -3,39 +3,55 @@ package com.github.spring.mq.pulsar.domain;
 import java.time.LocalDateTime;
 
 /**
- * 默认消息体
+ * Default message domain object
+ * 
+ * <p>This is the standard message wrapper used by the Pulsar starter.
+ * It provides a consistent structure for all messages with common
+ * metadata fields and a generic data payload.
+ * 
+ * <p>The message includes:
+ * <ul>
+ *   <li>Multi-tenancy support with corporation key</li>
+ *   <li>Application identification</li>
+ *   <li>Request tracing capabilities</li>
+ *   <li>Message routing information</li>
+ *   <li>Idempotency support with message ID</li>
+ *   <li>Timestamp tracking</li>
+ * </ul>
  *
+ * @param <T> The type of the message data payload
  * @author avinzhang
+ * @since 1.0.0
  */
 public class MsgDomain<T> {
     /**
-     * 多租户的租户key
+     * Multi-tenant corporation key
      */
     private String corpKey;
     /**
-     * 应用名称
+     * Application name
      */
     private String appName;
     /**
-     * 请求id
-     * 打印日志的traceId
+     * Request ID for tracing
+     * Used as trace ID for logging
      */
     private String requestId;
     /**
-     * 消息体id
-     * 做消息幂等的id
+     * Message ID for idempotency
+     * Used to ensure message processing idempotency
      */
     private String msgId;
     /**
-     * 消息业务路径
+     * Message business route
      */
     private String msgRoute;
     /**
-     * 消息产生时间
+     * Message creation time
      */
     private LocalDateTime time;
     /**
-     * 消息体
+     * Message data payload
      */
     private T data;
 

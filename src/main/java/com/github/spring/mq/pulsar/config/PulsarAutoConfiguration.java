@@ -48,9 +48,19 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Pulsar 自动配置类
+ * Pulsar auto-configuration class
+ * 
+ * <p>This class provides auto-configuration for Pulsar integration, including:
+ * <ul>
+ *   <li>Pulsar client configuration</li>
+ *   <li>Message template configuration</li>
+ *   <li>Producer and consumer setup</li>
+ *   <li>Object mapper configuration</li>
+ *   <li>Listener annotation processing</li>
+ * </ul>
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 @AutoConfiguration
 @ConditionalOnClass(PulsarClient.class)
@@ -69,24 +79,26 @@ public class PulsarAutoConfiguration {
     }
 
     /**
-     * 创建 Pulsar 客户端
+     * Create Pulsar client
      */
     @Bean
     @ConditionalOnMissingBean
     public PulsarClient pulsarClient() throws PulsarClientException {
-        // 校验配置参数
+        // Validate configuration parameters
         pulsarProperties.valid();
-        // 初始化 Pulsar 客户端
+        // Initialize Pulsar client
         try {
             ClientBuilder clientBuilder = PulsarClient.builder().serviceUrl(pulsarProperties.getServiceUrl())
                     .operationTimeout((int) pulsarProperties.getClient().getOperationTimeout().toMillis(), TimeUnit.MILLISECONDS)
                     .connectionTimeout((int) pulsarProperties.getClient().getConnectionTimeout().toMillis(), TimeUnit.MILLISECONDS)
-                    // netty的ioThreads负责网络IO操作，如果业务流量较大，可以调高ioThreads个数
+                    // Netty's ioThreads are responsible for network IO operations, 
+                    // if business traffic is large, you can increase the number of ioThreads
                     .ioThreads(pulsarProperties.getClient().getNumIoThreads())
-                    // 负责调用以listener模式启动的消费者的回调函数，建议配置大于该client负责的partition数目；
+                    // Responsible for calling callback functions of consumers started in listener mode,
+                    // it is recommended to configure more than the number of partitions that this client is responsible for
                     .listenerThreads(pulsarProperties.getClient().getNumListenerThreads());
 
-            // 配置认证
+            // Configure authentication
             PulsarProperties.Authentication auth = pulsarProperties.getAuthentication();
             if (auth.isEnabled()) {
                 if (StringUtils.hasText(auth.getToken())) {
@@ -107,7 +119,7 @@ public class PulsarAutoConfiguration {
     }
 
     /**
-     * 创建 Pulsar 模板
+     * Create Pulsar template
      */
     @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean
@@ -121,7 +133,7 @@ public class PulsarAutoConfiguration {
     }
 
     /**
-     * 创建消息发送器
+     * Create message sender
      */
     @Bean
     @ConditionalOnMissingBean
@@ -130,7 +142,7 @@ public class PulsarAutoConfiguration {
     }
 
     /**
-     * 创建多生产者 Bean 注册器
+     * Create multiple producer bean registrar
      */
     @Bean
     @ConditionalOnMissingBean
@@ -180,7 +192,7 @@ public class PulsarAutoConfiguration {
     }
 
     /**
-     * 创建监听器注解处理器
+     * Create listener annotation processor
      */
     @Bean
     @ConditionalOnMissingBean
@@ -189,7 +201,7 @@ public class PulsarAutoConfiguration {
     }
 
     /**
-     * 多生产者 Bean 注册器
+     * Multiple producer bean registrar
      */
     public static class MultipleProducerBeanRegistrar implements ApplicationContextAware, InitializingBean {
 
@@ -233,8 +245,8 @@ public class PulsarAutoConfiguration {
     }
 
     /**
-     * double json 格式化
-     * 保留2位小数
+     * Double JSON formatting
+     * Keep 2 decimal places
      *
      * @author avinzhang
      */

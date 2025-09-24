@@ -173,7 +173,7 @@ public class MsgContext {
         private String appName;
         private LocalDateTime time;
         /**
-         * 是否是多路由
+         * Whether it is multi-route
          */
         private boolean isMultiRoute;
         private String msgRoute;

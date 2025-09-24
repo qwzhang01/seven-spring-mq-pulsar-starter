@@ -136,10 +136,10 @@ public final class PulsarTemplate {
      * @throws PulsarClientException if sending fails
      */
     public MessageId sendAfter(String topic, String key, Object message, long delay, TimeUnit unit) throws PulsarClientException {
-        // 执行发送前拦截器
+        // Execute before-send interceptors
         Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
         if (interceptedMessage == null) {
-            // 拦截器返回null，不发送消息
+            // Interceptor returned null, do not send message
             return null;
         }
 
@@ -165,7 +165,7 @@ public final class PulsarTemplate {
             sendException = e;
             throw e;
         } finally {
-            // 执行发送后拦截器
+            // Execute after-send interceptors
             applyAfterSendInterceptors(topic, interceptedMessage, messageId, sendException);
         }
     }
@@ -182,10 +182,10 @@ public final class PulsarTemplate {
      * Send message at specific timestamp with key
      */
     public MessageId sendAt(String topic, String key, Object message, long timestamp) throws PulsarClientException {
-        // 执行发送前拦截器
+        // Execute before-send interceptors
         Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
         if (interceptedMessage == null) {
-            // 拦截器返回null，不发送消息
+            // Interceptor returned null, do not send message
             return null;
         }
 
@@ -211,7 +211,7 @@ public final class PulsarTemplate {
             sendException = e;
             throw e;
         } finally {
-            // 执行发送后拦截器
+            // Execute after-send interceptors
             applyAfterSendInterceptors(topic, interceptedMessage, messageId, sendException);
         }
     }
@@ -228,7 +228,7 @@ public final class PulsarTemplate {
      * Send message asynchronously with key
      */
     public CompletableFuture<MessageId> sendAsync(String topic, String key, Object message) {
-        // 执行发送前拦截器
+        // Execute before-send interceptors
         Object interceptedMessage = applyBeforeSendInterceptors(topic, message);
         if (interceptedMessage == null) {
             CompletableFuture<MessageId> future = new CompletableFuture<>();
@@ -250,11 +250,11 @@ public final class PulsarTemplate {
 
             return messageBuilder.sendAsync()
                     .whenComplete((messageId, exception) -> {
-                        // 执行发送后拦截器
+                        // Execute after-send interceptors
                         applyAfterSendInterceptors(topic, interceptedMessage, messageId, exception);
                     });
         } catch (Exception e) {
-            // 执行发送后拦截器
+            // Execute after-send interceptors
             applyAfterSendInterceptors(topic, message, null, e);
             CompletableFuture<MessageId> future = new CompletableFuture<>();
             future.completeExceptionally(e);
@@ -290,16 +290,16 @@ public final class PulsarTemplate {
                     DeadLetterPolicy.DeadLetterPolicyBuilder deadLetterPolicyBuilder = DeadLetterPolicy.builder();
                     if (org.apache.commons.lang3.StringUtils.isNotBlank(consumer.getRetryTopic())) {
                         deadLetterPolicyBuilder
-                                // 可以指定最大重试次数，最大重试三次后，进入到死信队列
+                                // Can specify maximum retry count, after 3 retries, messages enter dead letter queue
                                 .maxRedeliverCount(consumer.getRetryTime())
-                                // 指定重试队列
+                                // Specify retry queue
                                 .retryLetterTopic("persistent://" + consumer.getRetryTopic());
 
-                        consumerBuilder// 开启重试策略
+                        consumerBuilder// Enable retry strategy
                                 .enableRetry(true);
                     }
                     if (org.apache.commons.lang3.StringUtils.isNotBlank(consumer.getDeadTopic())) {
-                        // 指定死信队列
+                        // Specify dead letter queue
                         deadLetterPolicyBuilder.deadLetterTopic("persistent://" + consumer.getDeadTopic());
                         buildDeadLetterConsumer(consumer.getDeadTopic(), consumer.getDeadTopicSubscriptionName());
                     }
@@ -632,13 +632,13 @@ public final class PulsarTemplate {
             String traceId = MsgContext.getTraceId();
             String spanId = MsgContext.getSpanId();
 
-            // 注入trace信息
+            // Inject trace information
             if (traceId != null && spanId != null) {
                 PulsarMessageHeadersPropagator.injectTraceContext(messageBuilder, traceId, spanId, true);
                 logger.debug("Injected trace context into message - traceId: {}, spanId: {}", traceId, spanId);
             }
 
-            // 注入多租户信息
+            // Inject multi-tenant information
             boolean multiTenant = MsgContext.isMultiTenant();
             if (multiTenant) {
                 String corpKey = MsgContext.getCorpKey();
@@ -647,7 +647,7 @@ public final class PulsarTemplate {
                 String msgId = UUID.randomUUID().toString().replaceAll("-", "").toLowerCase(Locale.ROOT);
                 PulsarMessageHeadersPropagator.injectCorp(messageBuilder, corpKey, appName, time, msgId);
             }
-            // 注入路由信息
+            // Inject routing information
             boolean multiRoute = MsgContext.isMultiRoute();
             if (multiRoute) {
                 PulsarMessageHeadersPropagator.injectMsgRoute(messageBuilder, MsgContext.getMsgRoute());

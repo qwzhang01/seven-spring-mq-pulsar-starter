@@ -8,7 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 多 producer Pulsar 消息发送器实现
+ * Multi-producer Pulsar message sender implementation
  *
  * @author avinzhang
  * @since 1.0.0

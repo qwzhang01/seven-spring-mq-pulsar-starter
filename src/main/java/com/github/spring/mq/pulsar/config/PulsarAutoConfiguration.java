@@ -163,30 +163,30 @@ public class PulsarAutoConfiguration {
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT);
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
 
-        // 配置 LocalDateTime 序列化与反序列化
+        // Configure LocalDateTime serialization and deserialization
         javaTimeModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(dateTimeFormatter));
         javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(dateTimeFormatter));
-        // 配置 LocalDate 序列化与反序列化
+        // Configure LocalDate serialization and deserialization
         javaTimeModule.addSerializer(LocalDate.class, new LocalDateSerializer(dateFormatter));
         javaTimeModule.addDeserializer(LocalDate.class, new LocalDateDeserializer(dateFormatter));
 
         return JsonMapper.builder()
-                //不区分大小写设置
+                // Case insensitive property mapping
                 .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
-                //对象的所有字段全部列入
+                // Include all object fields
                 .defaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.ALWAYS, JsonInclude.Include.NON_NULL))
-                //忽略空Bean转json的错误
+                // Ignore empty Bean to JSON conversion errors
                 .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-                //取消默认转换timestamps形式
+                // Disable default timestamp conversion
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                //忽略在json字符串中存在，但是在java对象中不存在对应属性的情况。防止错误
+                // Ignore properties that exist in JSON but not in Java object to prevent errors
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
                 .defaultDateFormat(new SimpleDateFormat(DATE_TIME_FORMAT))
-                // 默认启用，通常无需显式设置
+                // Enabled by default, usually no need to set explicitly
                 .enable(MapperFeature.USE_ANNOTATIONS)
                 .build()
-                // double json 格式化
+                // Double JSON formatting
                 .registerModule(doubleModule)
                 .registerModule(javaTimeModule);
     }

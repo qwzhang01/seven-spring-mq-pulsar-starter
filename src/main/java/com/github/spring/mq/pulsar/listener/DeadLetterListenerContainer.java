@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * 死信队列监听器容器
+ * Dead letter queue listener container
  *
  * @author avinzhang
  */
@@ -34,7 +34,7 @@ public class DeadLetterListenerContainer {
     }
 
     /**
-     * 启动监听器
+     * Start listener
      */
     public void start() {
         if (running) {
@@ -56,7 +56,7 @@ public class DeadLetterListenerContainer {
     }
 
     /**
-     * 停止监听器
+     * Stop listener
      */
     public void stop() {
         running = false;

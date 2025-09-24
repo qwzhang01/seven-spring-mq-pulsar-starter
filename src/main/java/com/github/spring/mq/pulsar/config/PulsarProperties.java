@@ -678,36 +678,36 @@ public class PulsarProperties {
         }
 
         /**
-         * 重试配置
+         * Retry configuration
          */
         public static class Retry {
             /**
-             * 是否启用智能重试策略
+             * Whether to enable smart retry strategy
              */
             private boolean smartStrategyEnabled = true;
 
             /**
-             * 基础重试延迟
+             * Base retry delay
              */
             private Duration baseDelay = Duration.ofSeconds(1);
 
             /**
-             * 最大重试延迟
+             * Maximum retry delay
              */
             private Duration maxDelay = Duration.ofMinutes(5);
 
             /**
-             * 重试时间窗口
+             * Retry time window
              */
             private Duration retryWindow = Duration.ofHours(24);
 
             /**
-             * 是否启用抖动
+             * Whether to enable jitter
              */
             private boolean jitterEnabled = true;
 
             /**
-             * 抖动因子（0.0-1.0）
+             * Jitter factor (0.0-1.0)
              */
             private double jitterFactor = 0.2;
 
@@ -761,26 +761,26 @@ public class PulsarProperties {
         }
 
         /**
-         * 清理配置
+         * Cleanup configuration
          */
         public static class Cleanup {
             /**
-             * 是否启用自动清理
+             * Whether to enable automatic cleanup
              */
             private boolean autoCleanupEnabled = true;
 
             /**
-             * 消息过期时间
+             * Message expiration time
              */
             private Duration messageExpiration = Duration.ofDays(7);
 
             /**
-             * 清理执行时间（cron表达式）
+             * Cleanup execution time (cron expression)
              */
-            private String cleanupCron = "0 0 2 * * ?"; // 每天凌晨2点
+            private String cleanupCron = "0 0 2 * * ?"; // Daily at 2 AM
 
             /**
-             * 重试信息过期时间
+             * Retry information expiration time
              */
             private Duration retryInfoExpiration = Duration.ofHours(24);
 
@@ -818,31 +818,31 @@ public class PulsarProperties {
         }
 
         /**
-         * 监控配置
+         * Monitoring configuration
          */
         public static class Monitoring {
             /**
-             * 是否启用监控
+             * Whether to enable monitoring
              */
             private boolean enabled = true;
 
             /**
-             * 监控间隔
+             * Monitoring interval
              */
             private Duration monitoringInterval = Duration.ofMinutes(5);
 
             /**
-             * 健康检查超时时间
+             * Health check timeout
              */
             private Duration healthCheckTimeout = Duration.ofSeconds(30);
 
             /**
-             * 是否启用告警
+             * Whether to enable alerts
              */
             private boolean alertEnabled = false;
 
             /**
-             * 告警阈值（死信消息数量）
+             * Alert threshold (dead letter message count)
              */
             private long alertThreshold = 100;
 
@@ -888,21 +888,21 @@ public class PulsarProperties {
         }
 
         /**
-         * 统计配置
+         * Statistics configuration
          */
         public static class Statistics {
             /**
-             * 是否启用统计
+             * Whether to enable statistics
              */
             private boolean enabled = true;
 
             /**
-             * 统计数据保留时间
+             * Statistics data retention period
              */
             private Duration retentionPeriod = Duration.ofDays(30);
 
             /**
-             * 是否启用详细统计
+             * Whether to enable detailed statistics
              */
             private boolean detailedEnabled = false;
 

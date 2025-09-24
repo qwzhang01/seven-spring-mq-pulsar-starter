@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Pulsar 健康检查配置类
+ * Pulsar health check configuration class
  *
  * @author avinzhang
  * @since 1.0.0

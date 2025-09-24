@@ -22,7 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Pulsar 事务配置类
+ * Pulsar transaction configuration class
  *
  * @author avinzhang
  * @since 1.0.0
@@ -34,7 +34,7 @@ public class PulsarTransactionConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(PulsarTransactionConfiguration.class);
 
     /**
-     * Pulsar 事务管理器
+     * Pulsar transaction manager
      */
     @Bean
     @ConditionalOnMissingBean(name = "pulsarTransactionManager")
@@ -44,7 +44,7 @@ public class PulsarTransactionConfiguration {
     }
 
     /**
-     * Pulsar 事务模板
+     * Pulsar transaction template
      */
     @Bean
     @ConditionalOnMissingBean(name = "pulsarTransactionTemplate")
@@ -53,7 +53,7 @@ public class PulsarTransactionConfiguration {
     }
 
     /**
-     * Pulsar 事务构建器工厂
+     * Pulsar transaction builder factory
      */
     @Bean
     @ConditionalOnMissingBean
@@ -63,7 +63,7 @@ public class PulsarTransactionConfiguration {
     }
 
     /**
-     * Pulsar 事务管理器实现
+     * Pulsar transaction manager implementation
      */
     public static class PulsarTransactionManager extends AbstractPlatformTransactionManager {
 
@@ -80,7 +80,7 @@ public class PulsarTransactionConfiguration {
         protected Object doGetTransaction() throws TransactionException {
             PulsarTransactionObject txObject = new PulsarTransactionObject();
 
-            // 检查是否已存在事务
+            // Check if transaction already exists
             PulsarTransactionHolder holder = (PulsarTransactionHolder)
                     TransactionSynchronizationManager.getResource(pulsarClient);
 
@@ -104,21 +104,21 @@ public class PulsarTransactionConfiguration {
             try {
                 TransactionBuilder txnBuilder = pulsarClient.newTransaction();
 
-                // 设置事务超时时间
+                // Set transaction timeout
                 long timeoutMs = pulsarProperties.getTransaction().getTimeout().toMillis();
                 if (definition.getTimeout() != TransactionDefinition.TIMEOUT_DEFAULT) {
                     timeoutMs = definition.getTimeout() * 1000L;
                 }
                 txnBuilder.withTransactionTimeout(timeoutMs, TimeUnit.MILLISECONDS);
 
-                // 创建事务
+                // Create transaction
                 CompletableFuture<Transaction> txnFuture = txnBuilder.build();
                 Transaction transaction1 = txnFuture.get(timeoutMs, TimeUnit.MILLISECONDS);
 
                 PulsarTransactionHolder holder = new PulsarTransactionHolder(transaction1);
                 txObject.setTransactionHolder(holder);
 
-                // 绑定事务到当前线程
+                // Bind transaction to current thread
                 TransactionSynchronizationManager.bindResource(pulsarClient, holder);
 
                 logger.debug("Started Pulsar transaction: " + transaction1.getTxnID());
@@ -171,7 +171,7 @@ public class PulsarTransactionConfiguration {
         protected void doCleanupAfterCompletion(Object transaction) {
             PulsarTransactionObject txObject = (PulsarTransactionObject) transaction;
 
-            // 解绑资源
+            // Unbind resources
             TransactionSynchronizationManager.unbindResource(pulsarClient);
 
             txObject.setTransactionHolder(null);
@@ -179,7 +179,7 @@ public class PulsarTransactionConfiguration {
     }
 
     /**
-     * Pulsar 事务对象
+     * Pulsar transaction object
      */
     public static class PulsarTransactionObject {
         private PulsarTransactionHolder transactionHolder;
@@ -198,7 +198,7 @@ public class PulsarTransactionConfiguration {
     }
 
     /**
-     * Pulsar 事务持有者
+     * Pulsar transaction holder
      */
     public static class PulsarTransactionHolder {
         private final Transaction transaction;
@@ -213,7 +213,7 @@ public class PulsarTransactionConfiguration {
     }
 
     /**
-     * Pulsar 事务构建器工厂
+     * Pulsar transaction builder factory
      */
     public static class PulsarTransactionBuilderFactory {
         private final PulsarClient pulsarClient;
@@ -225,7 +225,7 @@ public class PulsarTransactionConfiguration {
         }
 
         /**
-         * 创建事务构建器
+         * Create transaction builder
          */
         public TransactionBuilder newTransactionBuilder() {
             return pulsarClient.newTransaction()
@@ -236,7 +236,7 @@ public class PulsarTransactionConfiguration {
         }
 
         /**
-         * 获取当前事务
+         * Get current transaction
          */
         public Transaction getCurrentTransaction() {
             PulsarTransactionHolder holder = (PulsarTransactionHolder)

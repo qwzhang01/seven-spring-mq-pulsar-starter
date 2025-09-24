@@ -35,6 +35,60 @@ spring:
       compression-type: NONE                        # 压缩类型：NONE, LZ4, ZLIB, ZSTD, SNAPPY
       routing-mode: RoundRobinPartition             # 路由模式：RoundRobinPartition, SinglePartition, CustomPartition
 
+    # ========== 多生产者配置 ==========
+    # 注意：producerMap 与单个 producer 配置不能同时使用
+    # 当需要配置多个不同的生产者时，使用 producerMap 替代上面的 producer 配置
+    # producer-map:
+    #   # 订单生产者配置
+    #   order-producer:
+    #     topic: persistent://public/default/order-topic
+    #     send-timeout: 60s                         # 订单消息重要，延长超时时间
+    #     block-if-queue-full: true                 # 订单消息不能丢失，队列满时阻塞
+    #     max-pending-messages: 500                 # 订单消息量相对较少
+    #     batching-enabled: false                   # 订单消息不批量，保证实时性
+    #     compression-type: LZ4                     # 订单数据可能较大，使用压缩
+    #     routing-mode: SinglePartition             # 订单消息发送到单分区保证顺序
+    #   
+    #   # 用户事件生产者配置
+    #   user-event-producer:
+    #     topic: persistent://public/default/user-event-topic
+    #     send-timeout: 30s
+    #     block-if-queue-full: false                # 用户事件允许丢失
+    #     max-pending-messages: 2000
+    #     batching-enabled: true                    # 用户事件量大，启用批量
+    #     batching-max-messages: 500
+    #     batching-max-publish-delay: 50ms
+    #     batching-max-bytes: 262144                # 256KB
+    #     compression-type: ZLIB                    # 用户事件数据压缩率要求高
+    #     routing-mode: RoundRobinPartition         # 用户事件均匀分布
+    #   
+    #   # 通知生产者配置
+    #   notification-producer:
+    #     topic: persistent://public/default/notification-topic
+    #     send-timeout: 15s                         # 通知消息要求快速发送
+    #     block-if-queue-full: false
+    #     max-pending-messages: 5000                # 通知消息量大
+    #     batching-enabled: true
+    #     batching-max-messages: 1000
+    #     batching-max-publish-delay: 20ms          # 通知要求低延迟
+    #     batching-max-bytes: 131072                # 128KB
+    #     compression-type: SNAPPY                  # 通知消息要求快速压缩
+    #     routing-mode: RoundRobinPartition
+    #   
+    #   # 日志生产者配置
+    #   log-producer:
+    #     topic: persistent://public/default/log-topic
+    #     send-timeout: 10s                         # 日志消息超时时间短
+    #     block-if-queue-full: false                # 日志消息可以丢失
+    #     max-pending-messages: 10000               # 日志消息量很大
+    #     max-pending-messages-across-partitions: 100000
+    #     batching-enabled: true                    # 日志消息必须批量处理
+    #     batching-max-messages: 2000
+    #     batching-max-publish-delay: 100ms         # 日志可以容忍更高延迟
+    #     batching-max-bytes: 524288                # 512KB，日志批量更大
+    #     compression-type: ZSTD                    # 日志数据量大，使用高压缩率
+    #     routing-mode: RoundRobinPartition
+
     # ========== 消费者配置 ==========
     consumer:
       # default-topic: my-default-topic              # 默认主题（可选）
@@ -62,6 +116,60 @@ spring:
       max-pending-chunked-message: 10              # 最大待处理分块消息数
       auto-ack-oldest-chunked-message-on-queue-full: false  # 队列满时是否自动确认最旧的分块消息
       expire-time-of-incomplete-chunked-message: 1m # 不完整分块消息过期时间
+
+    # ========== 多消费者配置 ==========
+    # 注意：consumerMap 与单个 consumer 配置不能同时使用
+    # 当需要配置多个不同的消费者时，使用 consumerMap 替代上面的 consumer 配置
+    # consumer-map:
+    #   # 订单消费者配置
+    #   order-consumer:
+    #     topic: persistent://public/default/order-topic
+    #     subscription-name: order-subscription
+    #     subscription-type: Exclusive              # 订单消息需要保证顺序，使用独占订阅
+    #     subscription-initial-position: Earliest
+    #     ack-timeout: 60s                         # 订单处理可能需要更长时间
+    #     receiver-queue-size: 500
+    #     business-key: orderType                  # 业务类型字段
+    #     retry-time: 5                            # 订单消息重试5次
+    #     auto-ack: false                          # 手动确认
+    #   
+    #   # 用户消费者配置
+    #   user-consumer:
+    #     topic: persistent://public/default/user-topic
+    #     subscription-name: user-subscription
+    #     subscription-type: Shared                # 用户消息可以并行处理
+    #     subscription-initial-position: Latest
+    #     ack-timeout: 30s
+    #     receiver-queue-size: 1000
+    #     business-key: userAction
+    #     retry-time: 3
+    #     auto-ack: true                           # 自动确认
+    #   
+    #   # 通知消费者配置
+    #   notification-consumer:
+    #     topic: persistent://public/default/notification-topic
+    #     subscription-name: notification-subscription
+    #     subscription-type: Key_Shared            # 按用户ID分组处理通知
+    #     subscription-initial-position: Latest
+    #     ack-timeout: 15s                         # 通知处理较快
+    #     receiver-queue-size: 2000
+    #     priority-level: 1                        # 通知优先级较高
+    #     business-key: userId
+    #     retry-time: 2
+    #     auto-ack: true
+    #   
+    #   # 日志消费者配置
+    #   log-consumer:
+    #     topic: persistent://public/default/log-topic
+    #     subscription-name: log-subscription
+    #     subscription-type: Shared
+    #     subscription-initial-position: Latest
+    #     ack-timeout: 10s                         # 日志处理很快
+    #     receiver-queue-size: 5000                # 日志量大，增大队列
+    #     business-key: logLevel
+    #     retry-time: 1                            # 日志消息重试次数少
+    #     auto-ack: true
+    #     read-compacted: true                     # 日志可能需要读取压缩主题
 
     # ========== 客户端配置 ==========
     client:
@@ -192,11 +300,51 @@ spring:
       send-timeout: 10s
       compression-type: NONE
     
+    # 开发环境多生产者配置示例
+    # producer-map:
+    #   dev-order-producer:
+    #     topic: persistent://public/default/dev-order-topic
+    #     send-timeout: 30s
+    #     block-if-queue-full: true
+    #     max-pending-messages: 100               # 开发环境减少队列大小
+    #     batching-enabled: false                 # 开发环境禁用批量便于调试
+    #     compression-type: NONE                  # 开发环境不压缩便于查看
+    #     routing-mode: SinglePartition
+    #   
+    #   dev-test-producer:
+    #     topic: persistent://public/default/dev-test-topic
+    #     send-timeout: 5s                        # 开发环境快速超时
+    #     block-if-queue-full: false
+    #     max-pending-messages: 50
+    #     batching-enabled: false
+    #     compression-type: NONE
+    #     routing-mode: RoundRobinPartition
+    
     # 开发环境消费者配置
     consumer:
       subscription-name: dev-subscription
       subscription-initial-position: Earliest   # 开发环境从最早消息开始
       ack-timeout: 10s
+    
+    # 开发环境多消费者配置示例
+    # consumer-map:
+    #   dev-order-consumer:
+    #     topic: persistent://public/default/dev-order-topic
+    #     subscription-name: dev-order-subscription
+    #     subscription-type: Exclusive
+    #     subscription-initial-position: Earliest # 开发环境从头开始消费
+    #     ack-timeout: 30s
+    #     retry-time: 2                          # 开发环境减少重试
+    #     auto-ack: false
+    #   
+    #   dev-test-consumer:
+    #     topic: persistent://public/default/dev-test-topic
+    #     subscription-name: dev-test-subscription
+    #     subscription-type: Shared
+    #     subscription-initial-position: Earliest
+    #     ack-timeout: 5s                        # 开发环境快速超时便于调试
+    #     retry-time: 1
+    #     auto-ack: true
     
     # 开发环境重试配置
     retry:
@@ -238,11 +386,57 @@ spring:
       batching-enabled: true
       batching-max-messages: 50
     
+    # 测试环境多生产者配置示例
+    # producer-map:
+    #   test-order-producer:
+    #     topic: persistent://public/default/test-order-topic
+    #     send-timeout: 20s
+    #     block-if-queue-full: true
+    #     max-pending-messages: 200               # 测试环境适中的队列大小
+    #     batching-enabled: true
+    #     batching-max-messages: 50
+    #     batching-max-publish-delay: 20ms
+    #     compression-type: LZ4                   # 测试环境启用压缩
+    #     routing-mode: SinglePartition
+    #   
+    #   test-user-producer:
+    #     topic: persistent://public/default/test-user-topic
+    #     send-timeout: 15s
+    #     block-if-queue-full: false
+    #     max-pending-messages: 500
+    #     batching-enabled: true
+    #     batching-max-messages: 100
+    #     batching-max-publish-delay: 30ms
+    #     compression-type: ZLIB
+    #     routing-mode: RoundRobinPartition
+    
     # 测试环境消费者配置
     consumer:
       subscription-name: test-subscription
       subscription-type: Shared
       ack-timeout: 20s
+    
+    # 测试环境多消费者配置示例
+    # consumer-map:
+    #   test-order-consumer:
+    #     topic: persistent://public/default/test-order-topic
+    #     subscription-name: test-order-subscription
+    #     subscription-type: Exclusive
+    #     subscription-initial-position: Latest
+    #     ack-timeout: 30s
+    #     retry-time: 3
+    #     auto-ack: false
+    #     receiver-queue-size: 500               # 测试环境适中的队列大小
+    #   
+    #   test-user-consumer:
+    #     topic: persistent://public/default/test-user-topic
+    #     subscription-name: test-user-subscription
+    #     subscription-type: Shared
+    #     subscription-initial-position: Latest
+    #     ack-timeout: 20s
+    #     retry-time: 3
+    #     auto-ack: true
+    #     receiver-queue-size: 1000
     
     # 测试环境认证配置
     authentication:
@@ -288,6 +482,70 @@ spring:
       compression-type: LZ4                      # 生产环境启用压缩
       routing-mode: RoundRobinPartition
     
+    # 生产环境多生产者优化配置示例
+    # producer-map:
+    #   prod-order-producer:
+    #     topic: persistent://public/default/prod-order-topic
+    #     send-timeout: 30s                       # 生产环境订单消息重要，延长超时
+    #     block-if-queue-full: true               # 订单消息不能丢失
+    #     max-pending-messages: 1000
+    #     max-pending-messages-across-partitions: 10000
+    #     batching-enabled: false                 # 订单消息保证实时性，不批量
+    #     compression-type: LZ4                   # 订单数据压缩
+    #     routing-mode: SinglePartition           # 订单保证顺序
+    #   
+    #   prod-user-event-producer:
+    #     topic: persistent://public/default/prod-user-event-topic
+    #     send-timeout: 15s
+    #     block-if-queue-full: false              # 用户事件允许丢失
+    #     max-pending-messages: 5000              # 用户事件量大
+    #     max-pending-messages-across-partitions: 50000
+    #     batching-enabled: true                  # 用户事件批量处理
+    #     batching-max-messages: 1000
+    #     batching-max-publish-delay: 10ms        # 低延迟批量
+    #     batching-max-bytes: 524288              # 512KB
+    #     compression-type: ZSTD                  # 高压缩率
+    #     routing-mode: RoundRobinPartition
+    #   
+    #   prod-notification-producer:
+    #     topic: persistent://public/default/prod-notification-topic
+    #     send-timeout: 10s                       # 通知消息快速发送
+    #     block-if-queue-full: false
+    #     max-pending-messages: 10000             # 通知消息量很大
+    #     max-pending-messages-across-partitions: 100000
+    #     batching-enabled: true
+    #     batching-max-messages: 2000
+    #     batching-max-publish-delay: 5ms         # 通知要求极低延迟
+    #     batching-max-bytes: 262144              # 256KB
+    #     compression-type: SNAPPY                # 快速压缩
+    #     routing-mode: RoundRobinPartition
+    #   
+    #   prod-log-producer:
+    #     topic: persistent://public/default/prod-log-topic
+    #     send-timeout: 5s                        # 日志消息超时短
+    #     block-if-queue-full: false              # 日志消息可丢失
+    #     max-pending-messages: 20000             # 日志消息量巨大
+    #     max-pending-messages-across-partitions: 200000
+    #     batching-enabled: true                  # 日志必须批量
+    #     batching-max-messages: 5000
+    #     batching-max-publish-delay: 50ms        # 日志可容忍延迟
+    #     batching-max-bytes: 1048576             # 1MB，大批量
+    #     compression-type: ZSTD                  # 日志高压缩
+    #     routing-mode: RoundRobinPartition
+    #   
+    #   prod-metrics-producer:
+    #     topic: persistent://public/default/prod-metrics-topic
+    #     send-timeout: 3s                        # 指标数据超时很短
+    #     block-if-queue-full: false              # 指标数据可丢失
+    #     max-pending-messages: 50000             # 指标数据量极大
+    #     max-pending-messages-across-partitions: 500000
+    #     batching-enabled: true
+    #     batching-max-messages: 10000            # 指标数据大批量
+    #     batching-max-publish-delay: 100ms       # 指标数据可容忍更高延迟
+    #     batching-max-bytes: 2097152             # 2MB，超大批量
+    #     compression-type: ZSTD                  # 指标数据高压缩
+    #     routing-mode: RoundRobinPartition
+    
     # 生产环境消费者优化配置
     consumer:
       subscription-name: ${spring.application.name}-${HOSTNAME:unknown}
@@ -299,6 +557,62 @@ spring:
       ack-timeout-tick-time: 1s
       negative-ack-redelivery-delay: 1m
       priority-level: 0
+    
+    # 生产环境多消费者优化配置示例
+    # consumer-map:
+    #   prod-order-consumer:
+    #     topic: persistent://public/default/prod-order-topic
+    #     subscription-name: ${spring.application.name}-order-${HOSTNAME:unknown}
+    #     subscription-type: Exclusive             # 订单保证顺序
+    #     subscription-initial-position: Latest
+    #     ack-timeout: 120s                       # 生产环境处理时间更长
+    #     ack-timeout-tick-time: 1s
+    #     negative-ack-redelivery-delay: 2m
+    #     receiver-queue-size: 1000
+    #     retry-time: 5                           # 生产环境更多重试
+    #     auto-ack: false                         # 手动确认保证可靠性
+    #     priority-level: 2                       # 订单高优先级
+    #     business-key: orderType
+    #   
+    #   prod-user-consumer:
+    #     topic: persistent://public/default/prod-user-topic
+    #     subscription-name: ${spring.application.name}-user-${HOSTNAME:unknown}
+    #     subscription-type: Key_Shared           # 按用户ID分组
+    #     subscription-initial-position: Latest
+    #     ack-timeout: 60s
+    #     ack-timeout-tick-time: 1s
+    #     negative-ack-redelivery-delay: 1m
+    #     receiver-queue-size: 2000
+    #     max-total-receiver-queue-size-across-partitions: 50000
+    #     retry-time: 3
+    #     auto-ack: true
+    #     priority-level: 1
+    #     business-key: userId
+    #   
+    #   prod-notification-consumer:
+    #     topic: persistent://public/default/prod-notification-topic
+    #     subscription-name: ${spring.application.name}-notification-${HOSTNAME:unknown}
+    #     subscription-type: Shared
+    #     subscription-initial-position: Latest
+    #     ack-timeout: 30s
+    #     receiver-queue-size: 5000               # 通知量大
+    #     retry-time: 2
+    #     auto-ack: true
+    #     priority-level: 0
+    #     business-key: notificationType
+    #   
+    #   prod-log-consumer:
+    #     topic: persistent://public/default/prod-log-topic
+    #     subscription-name: ${spring.application.name}-log-${HOSTNAME:unknown}
+    #     subscription-type: Shared
+    #     subscription-initial-position: Latest
+    #     ack-timeout: 15s                        # 日志处理快
+    #     receiver-queue-size: 10000              # 日志量很大
+    #     retry-time: 1                           # 日志重试少
+    #     auto-ack: true
+    #     priority-level: 0
+    #     business-key: logLevel
+    #     read-compacted: true                    # 可能需要压缩日志
     
     # 生产环境客户端优化配置
     client:

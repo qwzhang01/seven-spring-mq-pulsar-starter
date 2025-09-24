@@ -106,6 +106,11 @@
       "description": "路由模式：RoundRobinPartition, SinglePartition, CustomPartition"
     },
     {
+      "name": "spring.pulsar.producer-map",
+      "type": "java.util.Map<java.lang.String,com.github.spring.mq.pulsar.config.PulsarProperties$Producer>",
+      "description": "多个生产者配置映射，键为生产者标识，值为生产者配置。用于配置多个不同的生产者实例，每个生产者可以有独立的配置参数。注意：不能与单个生产者配置同时使用。"
+    },
+    {
       "name": "spring.pulsar.consumer.default-topic",
       "type": "java.lang.String",
       "description": "默认消费者主题"
@@ -204,6 +209,11 @@
       "type": "java.time.Duration",
       "defaultValue": "1m",
       "description": "不完整分块消息过期时间"
+    },
+    {
+      "name": "spring.pulsar.consumer-map",
+      "type": "java.util.Map<java.lang.String,com.github.spring.mq.pulsar.config.PulsarProperties$Consumer>",
+      "description": "多个消费者配置映射，键为消费者标识，值为消费者配置。用于配置多个不同的消费者实例，每个消费者可以有独立的配置参数。注意：不能与单个消费者配置同时使用。"
     },
     {
       "name": "spring.pulsar.client.operation-timeout",

@@ -7,11 +7,11 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Multi-producer Pulsar message sender interface
- * 
+ *
  * <p>Topic-based message sender that provides a convenient abstraction
  * for sending messages to a specific topic. This interface is designed
  * for scenarios where multiple producers are needed for different topics.
- * 
+ *
  * <p>Features:
  * <ul>
  *   <li>Topic-specific message sending</li>

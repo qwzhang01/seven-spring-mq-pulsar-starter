@@ -2,7 +2,7 @@ package com.github.spring.mq.pulsar.exception;
 
 /**
  * Pulsar consumer later exception
- * 
+ *
  * <p>This exception is thrown when a message needs to be reprocessed later,
  * typically used for retry scenarios where the message processing should be
  * delayed and attempted again.

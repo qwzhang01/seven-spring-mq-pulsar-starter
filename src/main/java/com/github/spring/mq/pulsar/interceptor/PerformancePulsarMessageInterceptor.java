@@ -7,14 +7,14 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Performance monitoring interceptor
- * 
+ *
  * <p>This interceptor measures the time taken for message sending and processing
  * operations. It provides performance metrics by logging the duration of:
  * <ul>
  *   <li>Message send operations</li>
  *   <li>Message receive and processing operations</li>
  * </ul>
- * 
+ *
  * <p>The interceptor uses ThreadLocal to ensure accurate timing measurements
  * in multi-threaded environments and has the highest priority to ensure
  * accurate time measurement.

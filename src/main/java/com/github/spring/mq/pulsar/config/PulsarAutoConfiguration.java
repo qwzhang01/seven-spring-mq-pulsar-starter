@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Pulsar auto-configuration class
- * 
+ *
  * <p>This class provides auto-configuration for Pulsar integration, including:
  * <ul>
  *   <li>Pulsar client configuration</li>

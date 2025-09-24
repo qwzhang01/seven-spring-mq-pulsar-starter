@@ -7,11 +7,11 @@ import java.util.Map;
 
 /**
  * Pulsar health check indicator
- * 
+ *
  * <p>Simplified version that doesn't depend on Spring Boot Actuator.
  * This class provides health check functionality for Pulsar connections
  * and can be used to monitor the status of Pulsar client connections.
- * 
+ *
  * <p>The health check includes:
  * <ul>
  *   <li>Client connection status verification</li>

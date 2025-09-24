@@ -4,11 +4,11 @@ import java.time.LocalDateTime;
 
 /**
  * Message context holder
- * 
+ *
  * <p>This class provides a thread-local context for storing message-related information
  * during message processing. It allows different components to access contextual data
  * without explicitly passing it through method parameters.
- * 
+ *
  * <p>The context includes:
  * <ul>
  *   <li>Processing time</li>
@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
  *   <li>Request ID for tracing</li>
  *   <li>Message routing information</li>
  * </ul>
- * 
+ *
  * <p><strong>Important:</strong> Always call {@link #remove()} after message processing
  * to prevent memory leaks in thread pools.
  *
@@ -78,21 +78,21 @@ public class MsgContext {
         context.setCorpKey(corpKey);
     }
 
-    public static String getRequestId() {
+    public static boolean isMultiRoute() {
         Context context = HOLDER.get();
         if (context == null) {
-            return null;
+            return false;
         }
-        return context.getRequestId();
+        return context.isMultiRoute();
     }
 
-    public static void setRequestId(String requestId) {
+    public static void setMultiRoute(boolean multiRoute) {
         Context context = HOLDER.get();
         if (context == null) {
             context = new Context();
             HOLDER.set(context);
         }
-        context.setRequestId(requestId);
+        context.setMultiRoute(multiRoute);
     }
 
     public static String getMsgRoute() {
@@ -112,16 +112,106 @@ public class MsgContext {
         context.setMsgRoute(businessPath);
     }
 
+    public static String getTraceId() {
+        Context context = HOLDER.get();
+        if (context == null) {
+            return null;
+        }
+        return context.getTraceId();
+    }
+
+    public static void setTraceId(String traceId) {
+        Context context = HOLDER.get();
+        if (context == null) {
+            context = new Context();
+            HOLDER.set(context);
+        }
+        context.setTraceId(traceId);
+    }
+
+    public static String getSpanId() {
+        Context context = HOLDER.get();
+        if (context == null) {
+            return null;
+        }
+        return context.getSpanId();
+    }
+
+    public static void setSpanId(String spanId) {
+        Context context = HOLDER.get();
+        if (context == null) {
+            context = new Context();
+            HOLDER.set(context);
+        }
+        context.setSpanId(spanId);
+    }
+
+    public static boolean isMultiTenant() {
+        Context context = HOLDER.get();
+        if (context == null) {
+            return false;
+        }
+        return context.isMultiTenant();
+    }
+
+    public static void setMultiTenant(boolean isMultiTenant) {
+        Context context = HOLDER.get();
+        if (context == null) {
+            context = new Context();
+            HOLDER.set(context);
+        }
+        context.setMultiTenant(isMultiTenant);
+    }
+
     public static void remove() {
         HOLDER.remove();
     }
 
     private static class Context {
+        private boolean isMultiTenant;
         private String corpKey;
         private String appName;
-        private String requestId;
         private LocalDateTime time;
+        /**
+         * 是否是多路由
+         */
+        private boolean isMultiRoute;
         private String msgRoute;
+
+        private String traceId;
+        private String spanId;
+
+        public boolean isMultiRoute() {
+            return isMultiRoute;
+        }
+
+        public void setMultiRoute(boolean multiRoute) {
+            isMultiRoute = multiRoute;
+        }
+
+        public String getSpanId() {
+            return spanId;
+        }
+
+        public void setSpanId(String spanId) {
+            this.spanId = spanId;
+        }
+
+        public String getTraceId() {
+            return traceId;
+        }
+
+        public void setTraceId(String traceId) {
+            this.traceId = traceId;
+        }
+
+        public boolean isMultiTenant() {
+            return isMultiTenant;
+        }
+
+        public void setMultiTenant(boolean multiTenant) {
+            isMultiTenant = multiTenant;
+        }
 
         public String getAppName() {
             return appName;
@@ -129,14 +219,6 @@ public class MsgContext {
 
         public void setAppName(String appName) {
             this.appName = appName;
-        }
-
-        public String getRequestId() {
-            return requestId;
-        }
-
-        public void setRequestId(String requestId) {
-            this.requestId = requestId;
         }
 
         public LocalDateTime getTime() {

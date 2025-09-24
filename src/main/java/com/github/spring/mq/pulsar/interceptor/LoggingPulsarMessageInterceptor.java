@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Logging Pulsar message interceptor example
- * 
+ *
  * <p>Demonstrates how to implement a custom Pulsar message interceptor
  * for logging purposes. This interceptor logs message send and receive
  * operations with detailed information including:

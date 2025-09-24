@@ -9,11 +9,11 @@ import java.lang.annotation.*;
 
 /**
  * Pulsar transaction annotation
- * 
+ *
  * <p>This is a composite annotation that combines Spring's @Transactional annotation,
  * specifically designed for Pulsar transaction management. It provides a convenient
  * way to enable transactional behavior for Pulsar message operations.
- * 
+ *
  * <p>Features:
  * <ul>
  *   <li>Automatic transaction management for Pulsar operations</li>
@@ -21,7 +21,7 @@ import java.lang.annotation.*;
  *   <li>Configurable transaction behavior and isolation levels</li>
  *   <li>Support for rollback conditions and timeout settings</li>
  * </ul>
- * 
+ *
  * <p>Usage example:
  * <pre>
  * {@code

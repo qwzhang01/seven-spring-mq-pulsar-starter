@@ -2,7 +2,7 @@ package com.github.spring.mq.pulsar.domain;
 
 /**
  * Listener type enumeration
- * 
+ *
  * <p>Defines the different types of message listeners supported by the Pulsar starter.
  * Each type has different characteristics and use cases:
  * <ul>

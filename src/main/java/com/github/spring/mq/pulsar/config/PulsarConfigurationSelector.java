@@ -65,6 +65,10 @@ public class PulsarConfigurationSelector implements ImportSelector {
         if (attributes.getBoolean("enablePerformanceInterceptor")) {
             imports.add(PulsarPerformanceInterceptorConfiguration.class.getName());
         }
+
+        // 链路追踪配置 - 默认启用
+        imports.add(PulsarTracingConfiguration.class.getName());
+
         return imports.toArray(new String[0]);
     }
 }

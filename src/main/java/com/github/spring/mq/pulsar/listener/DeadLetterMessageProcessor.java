@@ -8,11 +8,11 @@ import org.apache.pulsar.client.api.PulsarClientException;
 
 /**
  * Dead letter message processor
- * 
+ *
  * <p>This class handles messages that have been moved to the dead letter queue
  * after exceeding the maximum retry attempts. It provides basic processing
  * and acknowledgment functionality for dead letter messages.
- * 
+ *
  * <p>The processor logs the dead letter message content and acknowledges
  * the message to prevent it from being redelivered.
  *
@@ -22,7 +22,9 @@ import org.apache.pulsar.client.api.PulsarClientException;
 public class DeadLetterMessageProcessor {
     private final Logger logger = org.apache.logging.log4j.LogManager.getLogger(PulsarTemplate.class);
 
-    /** Process dead letter message */
+    /**
+     * Process dead letter message
+     */
     public void process(Consumer<byte[]> consumer, Message<byte[]> message) {
         try {
             byte[] data = message.getData();

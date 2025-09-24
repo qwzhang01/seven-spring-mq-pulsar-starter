@@ -2,7 +2,7 @@ package com.github.spring.mq.pulsar.exception;
 
 /**
  * Pulsar producer send exception
- * 
+ *
  * <p>This exception is thrown when there are errors during message sending
  * to Pulsar topics, such as network issues, topic not found, or producer
  * configuration problems.

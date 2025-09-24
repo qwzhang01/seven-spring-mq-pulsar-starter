@@ -2,7 +2,7 @@ package com.github.spring.mq.pulsar.exception;
 
 /**
  * Pulsar producer initialization exception
- * 
+ *
  * <p>This exception is thrown when there are errors during Pulsar producer
  * initialization, such as connection failures, authentication issues,
  * or resource allocation problems.

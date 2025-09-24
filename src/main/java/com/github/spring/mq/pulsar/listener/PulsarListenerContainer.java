@@ -18,9 +18,11 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
+import static com.github.spring.mq.pulsar.tracing.PulsarMessageHeadersPropagator.extractMsgRoute;
+
 /**
  * Pulsar listener container
- * 
+ *
  * <p>This class manages the lifecycle of Pulsar message consumers and handles
  * message processing for methods annotated with @PulsarListener. It provides:
  * <ul>
@@ -30,7 +32,7 @@ import java.util.stream.Collectors;
  *   <li>Support for multiple message handlers per topic</li>
  *   <li>Interceptor chain execution</li>
  * </ul>
- * 
+ *
  * <p>The container supports different listener types:
  * <ul>
  *   <li>LOOP: Polling-based message consumption</li>
@@ -167,7 +169,10 @@ public class PulsarListenerContainer {
                 return;
             }
 
-            String msgRoute = pulsarTemplate.deserializeMsgRoute(message.getData(), getRouteToKey());
+            String msgRoute = extractMsgRoute(message.getProperties());
+            if (msgRoute == null) {
+                msgRoute = pulsarTemplate.deserializeMsgRoute(message.getData(), getRouteToKey());
+            }
             Handler handler = this.handlerMap.get(msgRoute);
             if (handler == null) {
                 throw new UnsupportedOperationException("Business type not supported for route: " + msgRoute + ", no corresponding consumer, message content: " + new String(message.getData()));
@@ -220,7 +225,9 @@ public class PulsarListenerContainer {
         }
     }
 
-    /** Ignore messages with format errors that cannot be parsed */
+    /**
+     * Ignore messages with format errors that cannot be parsed
+     */
     private void ignore(Consumer<byte[]> consumer, Message<byte[]> message) {
         if (consumer.isConnected()) {
             try {
@@ -250,7 +257,9 @@ public class PulsarListenerContainer {
                         annotation.messageType()));
     }
 
-    /** Get route key based on route */
+    /**
+     * Get route key based on route
+     */
     private Map<String, String> getRouteToKey() {
         if (routeToKey != null) {
             return routeToKey;

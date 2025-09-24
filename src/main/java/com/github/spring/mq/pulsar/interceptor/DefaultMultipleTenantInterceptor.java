@@ -1,24 +1,30 @@
 package com.github.spring.mq.pulsar.interceptor;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.domain.MsgContext;
 import com.github.spring.mq.pulsar.domain.MsgDomain;
-import com.github.spring.mq.pulsar.exception.JacksonException;
+import com.github.spring.mq.pulsar.domain.MsgMetaKey;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Locale;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 /**
  * Default multi-tenant interceptor
- * 
+ * <p>
+ * 多租户等元信息在消息的 property 里面
+ * <p>
+ * 发送消息的时候，将租住信息放置消息的 property 里面，具体实现在 PulsarTemplate
+ * <p>
+ * 接受消息的时候，解析元信息，将租住信息放置当前线程共享变量
+ *
  * <p>This abstract interceptor provides multi-tenancy support for Pulsar messages.
  * It automatically wraps outgoing messages with tenant context information and
  * extracts tenant context from incoming messages.
- * 
+ *
  * <p>Features:
  * <ul>
  *   <li>Automatic message wrapping with {@link MsgDomain}</li>
@@ -26,7 +32,7 @@ import java.util.UUID;
  *   <li>Request tracing support</li>
  *   <li>Thread-local context management</li>
  * </ul>
- * 
+ *
  * <p>Subclasses must implement:
  * <ul>
  *   <li>{@link #buildSendContext()} - Set up context before sending</li>
@@ -39,51 +45,37 @@ import java.util.UUID;
 public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageInterceptor {
 
     private final static Logger logger = LoggerFactory.getLogger(DefaultMultipleTenantInterceptor.class);
-
-    private final ObjectMapper objectMapper;
-
-    protected DefaultMultipleTenantInterceptor(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+    private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
     @Override
     public Object beforeSend(String topic, Object message) {
         buildSendContext();
-        try {
-            MsgDomain<Object> domain = new MsgDomain<>();
-            domain.setCorpKey(MsgContext.getCorpKey());
-            domain.setAppName(MsgContext.getAppName());
-            domain.setRequestId(MsgContext.getRequestId());
-            domain.setMsgId(UUID.randomUUID().toString().replaceAll("-", "").toLowerCase(Locale.ROOT));
-            domain.setTime(MsgContext.getTime());
-            domain.setData(message);
-            domain.setMsgRoute(MsgContext.getMsgRoute());
-            return domain;
-        } finally {
-            MsgContext.remove();
-        }
+        MsgContext.setMultiTenant(true);
+        return message;
     }
-
 
     @Override
     public void afterSend(String topic, Object message, MessageId messageId, Throwable exception) {
-        // ignore
+        MsgContext.remove();
     }
 
     @Override
     public boolean beforeReceive(Message<?> message) {
-        MsgDomain<?> domain = deserialize(message.getData(), MsgDomain.class);
-        MsgContext.setCorpKey(domain.getCorpKey());
-        MsgContext.setAppName(domain.getAppName());
-        MsgContext.setRequestId(domain.getRequestId());
-        MsgContext.setTime(domain.getTime());
-        MsgContext.setMsgRoute(domain.getMsgRoute());
-        return buildReceiveContext(domain.getCorpKey());
+        Map<String, String> properties = message.getProperties();
+        String corpKey = properties.get(MsgMetaKey.CORP.getCode());
+        String appName = properties.get(MsgMetaKey.APP.getCode());
+        String time = properties.get(MsgMetaKey.TIME.getCode());
+
+        MsgContext.setCorpKey(corpKey);
+        MsgContext.setAppName(appName);
+        MsgContext.setTime(LocalDateTime.parse(time, DateTimeFormatter.ofPattern(DATE_TIME_FORMAT)));
+
+        return buildReceiveContext(corpKey);
     }
 
     @Override
     public void afterReceive(Message<?> message, Object processedMessage, Exception exception) {
-        // ignore
+        MsgContext.remove();
     }
 
     @Override
@@ -93,25 +85,8 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
     }
 
     /**
-     * Deserialize object from byte array
-     */
-    private <T> T deserialize(byte[] data, Class<T> clazz) {
-        try {
-            if (clazz == String.class) {
-                return clazz.cast(data);
-            } else if (clazz == byte[].class) {
-                return clazz.cast(data);
-            } else {
-                return objectMapper.readValue(data, clazz);
-            }
-        } catch (Exception e) {
-            throw new JacksonException("Failed to deserialize object", e);
-        }
-    }
-
-    /**
      * Build request context before sending message
-     * 
+     *
      * <p>Implementations should set up the necessary context information
      * in {@link MsgContext} before message sending.
      */
@@ -119,7 +94,7 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
 
     /**
      * Handle multi-tenant context switching after receiving message
-     * 
+     *
      * <p>Implementations should handle tenant switching based on the
      * corporation key extracted from the message.
      *

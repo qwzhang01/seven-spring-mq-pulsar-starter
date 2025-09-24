@@ -5,7 +5,7 @@ import org.apache.pulsar.client.api.MessageId;
 
 /**
  * Pulsar message interceptor interface
- * 
+ *
  * <p>This interface allows intercepting and processing messages during the send and receive process.
  * Interceptors can be used for various purposes such as:
  * <ul>
@@ -15,7 +15,7 @@ import org.apache.pulsar.client.api.MessageId;
  *   <li>Message filtering and routing</li>
  *   <li>Error handling and retry logic</li>
  * </ul>
- * 
+ *
  * <p>Interceptors are executed in order based on their priority (lower values = higher priority).
  * Multiple interceptors can be chained together to form a processing pipeline.
  *

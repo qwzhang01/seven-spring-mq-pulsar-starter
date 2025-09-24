@@ -37,6 +37,7 @@ public class DefaultTopicMessageSender implements TopicMessageSender {
     @Override
     public MessageId send(Object message, String msgRoute) {
         MsgContext.setMsgRoute(msgRoute);
+        MsgContext.setMultiRoute(true);
         return send(message);
     }
 
@@ -49,6 +50,7 @@ public class DefaultTopicMessageSender implements TopicMessageSender {
     @Override
     public MessageId send(String key, Object message, String msgRoute) {
         MsgContext.setMsgRoute(msgRoute);
+        MsgContext.setMultiRoute(true);
         return send(key, message);
     }
 
@@ -68,6 +70,7 @@ public class DefaultTopicMessageSender implements TopicMessageSender {
     @Override
     public CompletableFuture<MessageId> sendAsync(Object message, String msgRoute) {
         MsgContext.setMsgRoute(msgRoute);
+        MsgContext.setMultiRoute(true);
         return sendAsync(message);
     }
 
@@ -80,6 +83,7 @@ public class DefaultTopicMessageSender implements TopicMessageSender {
     @Override
     public CompletableFuture<MessageId> sendAsync(String key, Object message, String msgRoute) {
         MsgContext.setMsgRoute(msgRoute);
+        MsgContext.setMultiRoute(true);
         return sendAsync(key, message);
     }
 
@@ -92,6 +96,7 @@ public class DefaultTopicMessageSender implements TopicMessageSender {
     @Override
     public MessageId sendAfter(Object message, String msgRoute, long delay, TimeUnit unit) {
         MsgContext.setMsgRoute(msgRoute);
+        MsgContext.setMultiRoute(true);
         return sendAfter(message, delay, unit);
     }
 
@@ -104,6 +109,7 @@ public class DefaultTopicMessageSender implements TopicMessageSender {
     @Override
     public MessageId sendAt(Object message, String msgRoute, long timestamp) {
         MsgContext.setMsgRoute(msgRoute);
+        MsgContext.setMultiRoute(true);
         return sendAt(message, timestamp);
     }
 

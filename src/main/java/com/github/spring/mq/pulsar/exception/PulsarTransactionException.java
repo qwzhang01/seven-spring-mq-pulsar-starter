@@ -4,7 +4,7 @@ import org.springframework.transaction.TransactionException;
 
 /**
  * Pulsar transaction exception
- * 
+ *
  * <p>This exception is thrown when there are errors during Pulsar transaction
  * operations, such as transaction commit failures, rollback issues,
  * or transaction timeout problems. It extends Spring's TransactionException

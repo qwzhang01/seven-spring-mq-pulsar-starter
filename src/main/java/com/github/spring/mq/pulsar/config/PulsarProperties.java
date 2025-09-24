@@ -11,7 +11,7 @@ import java.util.Map;
 
 /**
  * Pulsar configuration properties
- * 
+ *
  * <p>This class contains all configuration properties for Pulsar integration.
  * It supports configuration for producers, consumers, clients, transactions,
  * dead letter queues, and other Pulsar features.
@@ -346,16 +346,16 @@ public class PulsarProperties {
             return autoAck;
         }
 
+        public void setAutoAck(boolean autoAck) {
+            this.autoAck = autoAck;
+        }
+
         public String getDeadTopicSubscriptionName() {
             return deadTopicSubscriptionName;
         }
 
         public void setDeadTopicSubscriptionName(String deadTopicSubscriptionName) {
             this.deadTopicSubscriptionName = deadTopicSubscriptionName;
-        }
-
-        public void setAutoAck(boolean autoAck) {
-            this.autoAck = autoAck;
         }
 
         public String getRetryTopic() {

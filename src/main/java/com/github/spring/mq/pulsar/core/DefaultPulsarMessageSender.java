@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Default implementation of Pulsar message sender
- * 
+ *
  * <p>This class provides a concrete implementation of the {@link PulsarMessageSender} interface,
  * offering various methods for sending messages to Pulsar topics. It supports:
  * <ul>

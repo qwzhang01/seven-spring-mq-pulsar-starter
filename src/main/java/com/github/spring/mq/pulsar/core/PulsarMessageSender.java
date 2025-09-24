@@ -7,11 +7,11 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Pulsar message sender interface
- * 
+ *
  * <p>Provides a unified abstraction for message sending operations.
  * This interface defines various methods for sending messages to Pulsar topics
  * with different delivery modes and configurations.
- * 
+ *
  * <p>Supported operations:
  * <ul>
  *   <li>Synchronous and asynchronous message sending</li>

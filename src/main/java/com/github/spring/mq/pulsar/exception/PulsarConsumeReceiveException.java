@@ -2,7 +2,7 @@ package com.github.spring.mq.pulsar.exception;
 
 /**
  * Pulsar consume receive exception
- * 
+ *
  * <p>This exception is thrown when there are errors during message consumption
  * from Pulsar topics, such as deserialization failures, consumer connection
  * issues, or message acknowledgment problems.

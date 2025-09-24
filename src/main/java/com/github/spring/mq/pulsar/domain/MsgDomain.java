@@ -4,11 +4,11 @@ import java.time.LocalDateTime;
 
 /**
  * Default message domain object
- * 
+ *
  * <p>This is the standard message wrapper used by the Pulsar starter.
  * It provides a consistent structure for all messages with common
  * metadata fields and a generic data payload.
- * 
+ *
  * <p>The message includes:
  * <ul>
  *   <li>Multi-tenancy support with corporation key</li>
@@ -36,7 +36,8 @@ public class MsgDomain<T> {
      * Request ID for tracing
      * Used as trace ID for logging
      */
-    private String requestId;
+    private String traceId;
+    private String spanId;
     /**
      * Message ID for idempotency
      * Used to ensure message processing idempotency
@@ -71,12 +72,20 @@ public class MsgDomain<T> {
         this.appName = appName;
     }
 
-    public String getRequestId() {
-        return requestId;
+    public String getTraceId() {
+        return traceId;
     }
 
-    public void setRequestId(String requestId) {
-        this.requestId = requestId;
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
+
+    public String getSpanId() {
+        return spanId;
+    }
+
+    public void setSpanId(String spanId) {
+        this.spanId = spanId;
     }
 
     public String getMsgId() {

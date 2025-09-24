@@ -39,12 +39,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * </pre>
  *
  * @author avinzhang
- * @since 1.0.0
  * @see BeanPostProcessor Spring Bean post-processor interface
  * @see BeanFactoryAware Used to get BeanFactory reference
  * @see DisposableBean Used to clean up resources when Bean is destroyed
  * @see PulsarListener Listener annotation
  * @see PulsarListenerContainer Listener container
+ * @since 1.0.0
  */
 public class PulsarListenerAnnotationBeanPostProcessor implements BeanPostProcessor, BeanFactoryAware, DisposableBean {
 

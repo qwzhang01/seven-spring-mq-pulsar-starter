@@ -6,12 +6,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 /**
  * Pulsar transaction utilities
- * 
+ *
  * <p>This utility class provides convenient methods for working with
  * Pulsar transactions in a Spring-managed environment. It integrates
  * with Spring's transaction management infrastructure to provide
  * seamless transaction support.
- * 
+ *
  * <p>Features:
  * <ul>
  *   <li>Current transaction retrieval</li>

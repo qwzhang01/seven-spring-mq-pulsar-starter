@@ -9,11 +9,11 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Pulsar dead letter queue configuration class
- * 
+ *
  * <p>This configuration class sets up the infrastructure for handling
  * dead letter messages in Pulsar. Dead letter messages are messages
  * that have exceeded the maximum retry attempts and need special handling.
- * 
+ *
  * <p>The configuration provides a DeadLetterMessageProcessor bean that
  * handles the processing and acknowledgment of dead letter messages.
  *
@@ -25,11 +25,11 @@ import org.springframework.context.annotation.Configuration;
 public class PulsarDeadLetterConfiguration {
     /**
      * Dead letter message processor
-     * 
+     *
      * <p>Creates a DeadLetterMessageProcessor bean for handling messages
      * that have been moved to the dead letter queue after exceeding
      * the maximum retry attempts.
-     * 
+     *
      * @return DeadLetterMessageProcessor instance
      */
     @Bean

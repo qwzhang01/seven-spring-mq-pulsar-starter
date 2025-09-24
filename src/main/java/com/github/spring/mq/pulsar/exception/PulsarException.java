@@ -2,7 +2,7 @@ package com.github.spring.mq.pulsar.exception;
 
 /**
  * Base Pulsar exception
- * 
+ *
  * <p>This is the base exception class for all Pulsar-related exceptions
  * in the Seven Spring MQ Pulsar Starter. All specific Pulsar exceptions
  * should extend this class.

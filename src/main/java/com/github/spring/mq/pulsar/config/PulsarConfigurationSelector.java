@@ -10,8 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Pulsar 配置选择器
- * 根据 @EnablePulsar 注解的配置动态导入相关配置类
+ * Pulsar configuration selector
+ * 
+ * <p>Dynamically imports related configuration classes based on the configuration 
+ * of the @EnablePulsar annotation. This selector analyzes the annotation attributes
+ * and conditionally imports the appropriate configuration classes.
  *
  * @author avinzhang
  * @since 1.0.0
@@ -33,10 +36,10 @@ public class PulsarConfigurationSelector implements ImportSelector {
 
         List<String> imports = new ArrayList<>();
 
-        // 基础配置始终导入
+        // Always import basic configuration
         imports.add(PulsarAutoConfiguration.class.getName());
 
-        // 消费者配置
+        // Consumer configuration
         if (ListenerType.EVENT.equals(attributes.getEnum("listenerType"))) {
             imports.add(PulsarConsumerEventConfiguration.class.getName());
         }
@@ -45,7 +48,7 @@ public class PulsarConfigurationSelector implements ImportSelector {
         }
         imports.add(PulsarDeadLetterConfiguration.class.getName());
 
-        // 根据注解配置导入相应的配置类
+        // Import corresponding configuration classes based on annotation configuration
         if (attributes.getBoolean("enableTransaction")) {
             imports.add(PulsarTransactionConfiguration.class.getName());
         }
@@ -66,7 +69,7 @@ public class PulsarConfigurationSelector implements ImportSelector {
             imports.add(PulsarPerformanceInterceptorConfiguration.class.getName());
         }
 
-        // 链路追踪配置 - 默认启用
+        // Tracing configuration - enabled by default
         imports.add(PulsarTracingConfiguration.class.getName());
 
         return imports.toArray(new String[0]);

@@ -1,9 +1,13 @@
 package com.github.spring.mq.pulsar.domain;
 
 /**
- * 消息元信息 key
+ * Message metadata keys
+ * 
+ * <p>Defines standard keys used for message metadata in Pulsar messages.
+ * These keys are used for tenant information, tracing, and routing.
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 
 public enum MsgMetaKey {

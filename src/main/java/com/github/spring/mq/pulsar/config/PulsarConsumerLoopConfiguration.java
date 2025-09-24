@@ -10,16 +10,24 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 
 /**
- * Pulsar 自动配置类
+ * Pulsar consumer loop configuration
+ * 
+ * <p>This configuration class provides automatic setup for loop-based
+ * message consumption when PulsarClient is available in the application context.
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 @AutoConfiguration
 @ConditionalOnBean(PulsarClient.class)
 public class PulsarConsumerLoopConfiguration {
 
     /**
-     * 创建监听器容器工厂
+     * Create listener container factory for loop-based consumption
+     * 
+     * @param pulsarProperties Pulsar configuration properties
+     * @param pulsarTemplate Pulsar template for message operations
+     * @return PulsarListenerContainerFactory configured for loop mode
      */
     @Bean
     @ConditionalOnMissingBean

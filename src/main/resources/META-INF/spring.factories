@@ -1,3 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-com.github.spring.mq.pulsar.config.PulsarAutoConfiguration,\
-com.github.spring.mq.pulsar.config.PulsarTracingConfiguration
+com.github.spring.mq.pulsar.config.PulsarAutoConfiguration

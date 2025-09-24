@@ -14,12 +14,16 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * 多租户拦截器，租户信息、请求追踪等都在消息体，不在消息元信息里面
- * <p>
- * 发送消息拦截器后，将消息包装，添加元信息
- * 接受消息拦截后，将消息拆包，提取元信息
- * <p>
- * 提取数据不是逻辑在监听器里面实现 link: PulsarListenerContainer
+ * Multi-tenant interceptor with metadata in message body
+ * 
+ * <p>This interceptor handles multi-tenant information and request tracing
+ * by embedding metadata directly in the message body, not in message properties.
+ * 
+ * <p>When sending messages, the interceptor wraps the original message and adds
+ * metadata. When receiving messages, it unwraps the message and extracts metadata.
+ * 
+ * <p>Data extraction logic is implemented in the listener container.
+ * See: {@link com.github.spring.mq.pulsar.listener.PulsarListenerContainer}
  *
  * <p>This abstract interceptor provides multi-tenancy support for Pulsar messages.
  * It automatically wraps outgoing messages with tenant context information and

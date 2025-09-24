@@ -14,12 +14,14 @@ import java.util.Map;
 
 /**
  * Default multi-tenant interceptor
- * <p>
- * 多租户等元信息在消息的 property 里面
- * <p>
- * 发送消息的时候，将租住信息放置消息的 property 里面，具体实现在 PulsarTemplate
- * <p>
- * 接受消息的时候，解析元信息，将租住信息放置当前线程共享变量
+ * 
+ * <p>This interceptor handles multi-tenant metadata through message properties.
+ * Tenant information and other metadata are stored in the message properties
+ * rather than in the message body.
+ * 
+ * <p>When sending messages, tenant information is placed in message properties
+ * (implementation details in PulsarTemplate). When receiving messages, metadata
+ * is parsed and tenant information is placed in thread-local variables.
  *
  * <p>This abstract interceptor provides multi-tenancy support for Pulsar messages.
  * It automatically wraps outgoing messages with tenant context information and

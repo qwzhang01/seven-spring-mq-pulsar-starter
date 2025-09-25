@@ -19,7 +19,7 @@ spring:
 
     # ========== 生产者配置 ==========
     producer:
-      # default-topic: my-default-topic              # 默认主题（可选）
+      # topic: my-default-topic                      # 生产者主题（可选）
       send-timeout: 30s                             # 发送超时时间
       block-if-queue-full: false                    # 队列满时是否阻塞
       max-pending-messages: 1000                    # 最大待发送消息数
@@ -91,15 +91,22 @@ spring:
 
     # ========== 消费者配置 ==========
     consumer:
-      # default-topic: my-default-topic              # 默认主题（可选）
-      subscription-name: default-subscription       # 订阅名称
+      # topic: my-default-topic                      # 消费者主题（可选）
+      # retry-topic: my-retry-topic                  # 重试主题（可选）
+      # dead-topic: my-dead-topic                    # 死信主题（可选）
+      business-key: businessPath                   # 业务类型字段名
+      subscription-name: sub1                      # 订阅名称
+      dead-topic-subscription-name: sub1           # 死信主题订阅名称
       subscription-type: Shared                     # 订阅类型：Exclusive, Shared, Failover, Key_Shared
-      subscription-initial-position: Latest         # 订阅初始位置：Earliest, Latest
+      subscription-initial-position: Earliest      # 订阅初始位置：Earliest, Latest
+      auto-ack: true                               # 是否自动确认消息
+      retry-time: 3                                # 最大重试次数
       
       # 确认配置
       ack-timeout: 30s                             # 消息确认超时时间
       ack-timeout-tick-time: 1s                    # 确认超时检查间隔
-      negative-ack-redelivery-delay: 1m            # 负确认重新投递延迟
+      negative-ack-redelivery-delay: 1000          # 负确认重新投递延迟（毫秒）
+      time-to-reconsume-delay: 1000                # 消息重新消费延迟时间（毫秒）
       
       # 队列配置
       receiver-queue-size: 1000                    # 接收队列大小
@@ -325,6 +332,9 @@ spring:
       subscription-name: dev-subscription
       subscription-initial-position: Earliest   # 开发环境从最早消息开始
       ack-timeout: 10s
+      negative-ack-redelivery-delay: 500        # 开发环境快速重试
+      time-to-reconsume-delay: 500
+      retry-time: 2                             # 开发环境减少重试次数
     
     # 开发环境多消费者配置示例
     # consumer-map:
@@ -415,6 +425,9 @@ spring:
       subscription-name: test-subscription
       subscription-type: Shared
       ack-timeout: 20s
+      negative-ack-redelivery-delay: 1000
+      time-to-reconsume-delay: 1000
+      retry-time: 3
     
     # 测试环境多消费者配置示例
     # consumer-map:
@@ -555,7 +568,9 @@ spring:
       max-total-receiver-queue-size-across-partitions: 100000
       ack-timeout: 60s
       ack-timeout-tick-time: 1s
-      negative-ack-redelivery-delay: 1m
+      negative-ack-redelivery-delay: 2000          # 生产环境延长重试延迟
+      time-to-reconsume-delay: 2000
+      retry-time: 5                                # 生产环境增加重试次数
       priority-level: 0
     
     # 生产环境多消费者优化配置示例

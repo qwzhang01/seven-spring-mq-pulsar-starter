@@ -106,6 +106,11 @@
       "description": "路由模式：RoundRobinPartition, SinglePartition, CustomPartition"
     },
     {
+      "name": "spring.pulsar.producer.topic",
+      "type": "java.lang.String",
+      "description": "生产者主题名称"
+    },
+    {
       "name": "spring.pulsar.producer-map",
       "type": "java.util.Map<java.lang.String,com.github.spring.mq.pulsar.config.PulsarProperties$Producer>",
       "description": "多个生产者配置映射，键为生产者标识，值为生产者配置。用于配置多个不同的生产者实例，每个生产者可以有独立的配置参数。注意：不能与单个生产者配置同时使用。"
@@ -118,7 +123,7 @@
     {
       "name": "spring.pulsar.consumer.subscription-name",
       "type": "java.lang.String",
-      "defaultValue": "default-subscription",
+      "defaultValue": "sub1",
       "description": "订阅名称"
     },
     {
@@ -130,7 +135,7 @@
     {
       "name": "spring.pulsar.consumer.subscription-initial-position",
       "type": "java.lang.String",
-      "defaultValue": "Latest",
+      "defaultValue": "Earliest",
       "description": "订阅初始位置：Earliest, Latest"
     },
     {
@@ -209,6 +214,57 @@
       "type": "java.time.Duration",
       "defaultValue": "1m",
       "description": "不完整分块消息过期时间"
+    },
+    {
+      "name": "spring.pulsar.consumer.topic",
+      "type": "java.lang.String",
+      "description": "消费者主题名称"
+    },
+    {
+      "name": "spring.pulsar.consumer.retry-topic",
+      "type": "java.lang.String",
+      "description": "重试主题名称"
+    },
+    {
+      "name": "spring.pulsar.consumer.dead-topic",
+      "type": "java.lang.String",
+      "description": "死信主题名称"
+    },
+    {
+      "name": "spring.pulsar.consumer.business-key",
+      "type": "java.lang.String",
+      "defaultValue": "businessPath",
+      "description": "用于区分同一消息不同业务类型的字段名"
+    },
+    {
+      "name": "spring.pulsar.consumer.dead-topic-subscription-name",
+      "type": "java.lang.String",
+      "defaultValue": "sub1",
+      "description": "死信主题订阅名称"
+    },
+    {
+      "name": "spring.pulsar.consumer.auto-ack",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否自动确认消息"
+    },
+    {
+      "name": "spring.pulsar.consumer.retry-time",
+      "type": "java.lang.Integer",
+      "defaultValue": 3,
+      "description": "最大重试次数，超过此限制后消息进入死信队列"
+    },
+    {
+      "name": "spring.pulsar.consumer.negative-ack-redelivery-delay",
+      "type": "java.lang.Integer",
+      "defaultValue": 1000,
+      "description": "负确认消息重新投递延迟时间（毫秒）"
+    },
+    {
+      "name": "spring.pulsar.consumer.time-to-reconsume-delay",
+      "type": "java.lang.Integer",
+      "defaultValue": 1000,
+      "description": "消息重新消费延迟时间（毫秒）"
     },
     {
       "name": "spring.pulsar.consumer-map",

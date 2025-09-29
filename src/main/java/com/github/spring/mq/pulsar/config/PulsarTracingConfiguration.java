@@ -1,6 +1,10 @@
 package com.github.spring.mq.pulsar.config;
 
 import com.github.spring.mq.pulsar.interceptor.TracingPulsarMessageInterceptor;
+import com.github.spring.mq.pulsar.tracing.ConsumeDefaultExceptionHandler;
+import com.github.spring.mq.pulsar.tracing.ConsumeExceptionHandlerContainer;
+import com.github.spring.mq.pulsar.tracing.ConsumeExceptionHandlerContainerFactory;
+import com.github.spring.mq.pulsar.tracing.ConsumerAdviceAnnotationBeanPostProcessor;
 import io.micrometer.tracing.Tracer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -39,5 +43,29 @@ public class PulsarTracingConfiguration {
     @ConditionalOnBean(Tracer.class)
     public TracingPulsarMessageInterceptor tracingPulsarMessageInterceptor(Tracer tracer) {
         return new TracingPulsarMessageInterceptor(tracer);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ConsumeDefaultExceptionHandler consumeDefaultExceptionHandler() {
+        return new ConsumeDefaultExceptionHandler();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ConsumerAdviceAnnotationBeanPostProcessor consumerAdviceAnnotationBeanPostProcessor(ConsumeExceptionHandlerContainerFactory containerFactory) {
+        return new ConsumerAdviceAnnotationBeanPostProcessor(containerFactory);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ConsumeExceptionHandlerContainerFactory consumeExceptionHandlerContainerFactory(ConsumeExceptionHandlerContainer consumeExceptionHandlerContainer) {
+        return new ConsumeExceptionHandlerContainerFactory(consumeExceptionHandlerContainer);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ConsumeExceptionHandlerContainer consumeExceptionHandlerContainer() {
+        return new ConsumeExceptionHandlerContainer();
     }
 }

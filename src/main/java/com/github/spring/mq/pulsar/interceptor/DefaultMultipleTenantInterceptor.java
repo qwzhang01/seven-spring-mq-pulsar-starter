@@ -14,11 +14,11 @@ import java.util.Map;
 
 /**
  * Default multi-tenant interceptor
- * 
+ *
  * <p>This interceptor handles multi-tenant metadata through message properties.
  * Tenant information and other metadata are stored in the message properties
  * rather than in the message body.
- * 
+ *
  * <p>When sending messages, tenant information is placed in message properties
  * (implementation details in PulsarTemplate). When receiving messages, metadata
  * is parsed and tenant information is placed in thread-local variables.

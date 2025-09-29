@@ -4,6 +4,7 @@ import com.github.spring.mq.pulsar.annotation.PulsarListener;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
 import com.github.spring.mq.pulsar.core.PulsarTemplate;
 import com.github.spring.mq.pulsar.domain.ListenerType;
+import com.github.spring.mq.pulsar.tracing.ConsumeExceptionHandlerContainer;
 import org.apache.pulsar.client.api.Consumer;
 import org.springframework.util.StringUtils;
 
@@ -35,12 +36,16 @@ public class PulsarListenerContainerFactory {
     private final PulsarTemplate pulsarTemplate;
     private final ListenerType listenerType;
     private final ConcurrentHashMap<String, PulsarListenerContainer> containerCache = new ConcurrentHashMap<>();
+    private final ConsumeExceptionHandlerContainer consumeExceptionHandlerContainer;
 
     public PulsarListenerContainerFactory(PulsarProperties pulsarProperties,
-                                          PulsarTemplate pulsarTemplate, ListenerType listenerType) {
+                                          PulsarTemplate pulsarTemplate,
+                                          ListenerType listenerType,
+                                          ConsumeExceptionHandlerContainer consumeExceptionHandlerContainer) {
         this.pulsarProperties = pulsarProperties;
         this.pulsarTemplate = pulsarTemplate;
         this.listenerType = listenerType;
+        this.consumeExceptionHandlerContainer = consumeExceptionHandlerContainer;
     }
 
     /**
@@ -93,7 +98,7 @@ public class PulsarListenerContainerFactory {
                 consumerProperty.isAutoAck(),
                 annotation.messageType(),
                 pulsarTemplate,
-                listenerType);
+                listenerType, consumeExceptionHandlerContainer);
 
         containerCache.put(annotation.topic(), container);
         return container;

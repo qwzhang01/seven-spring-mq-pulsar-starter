@@ -3,6 +3,7 @@ package com.github.spring.mq.pulsar.config;
 import com.github.spring.mq.pulsar.core.PulsarTemplate;
 import com.github.spring.mq.pulsar.domain.ListenerType;
 import com.github.spring.mq.pulsar.listener.PulsarListenerContainerFactory;
+import com.github.spring.mq.pulsar.tracing.ConsumeExceptionHandlerContainer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -38,7 +39,7 @@ public class PulsarConsumerEventConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public PulsarListenerContainerFactory pulsarListenerContainerFactory(PulsarProperties pulsarProperties, PulsarTemplate pulsarTemplate) {
-        return new PulsarListenerContainerFactory(pulsarProperties, pulsarTemplate, ListenerType.EVENT);
+    public PulsarListenerContainerFactory pulsarListenerContainerFactory(PulsarProperties pulsarProperties, PulsarTemplate pulsarTemplate, ConsumeExceptionHandlerContainer consumeExceptionHandlerContainer) {
+        return new PulsarListenerContainerFactory(pulsarProperties, pulsarTemplate, ListenerType.EVENT, consumeExceptionHandlerContainer);
     }
 }

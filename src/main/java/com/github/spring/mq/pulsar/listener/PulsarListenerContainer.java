@@ -3,9 +3,7 @@ package com.github.spring.mq.pulsar.listener;
 import com.github.spring.mq.pulsar.annotation.PulsarListener;
 import com.github.spring.mq.pulsar.core.PulsarTemplate;
 import com.github.spring.mq.pulsar.domain.ListenerType;
-import com.github.spring.mq.pulsar.exception.JacksonException;
-import com.github.spring.mq.pulsar.exception.PulsarConsumeReceiveException;
-import com.github.spring.mq.pulsar.exception.PulsarConsumerLatterException;
+import com.github.spring.mq.pulsar.tracing.ConsumeExceptionHandlerContainer;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClientException;
@@ -61,7 +59,7 @@ public class PulsarListenerContainer {
     private final ExecutorService executor;
 
     private final ListenerType listenerType;
-
+    private final ConsumeExceptionHandlerContainer consumeExceptionHandlerContainer;
     private volatile boolean running = false;
     /**
      * key: message route
@@ -79,12 +77,14 @@ public class PulsarListenerContainer {
                                    boolean autoAck,
                                    Class<?> messageType,
                                    PulsarTemplate pulsarTemplate,
-                                   ListenerType listenerType) {
+                                   ListenerType listenerType,
+                                   ConsumeExceptionHandlerContainer consumeExceptionHandlerContainer) {
         this.consumer = consumer;
         this.handlerMap.put(route, new Handler(routeKey, dataKey, bean, method, messageType));
         this.autoAck = autoAck;
         this.pulsarTemplate = pulsarTemplate;
         this.listenerType = listenerType;
+        this.consumeExceptionHandlerContainer = consumeExceptionHandlerContainer;
         this.executor = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "pulsar-listener-" + method.getName());
             thread.setDaemon(true);
@@ -164,7 +164,7 @@ public class PulsarListenerContainer {
             if (!pulsarTemplate.applyBeforeReceiveInterceptors(message)) {
                 logger.debug("Message filtered by beforeReceive interceptor");
                 if (autoAck) {
-                    ignore(consumer, message);
+                    consumer.acknowledge(message);
                 }
                 return;
             }
@@ -205,46 +205,13 @@ public class PulsarListenerContainer {
             if (autoAck && consumer.isConnected()) {
                 consumer.acknowledge(message);
             }
-        } catch (UnsupportedOperationException | JacksonException e) {
-            logger.error("Error processing message", e);
-            ignore(consumer, message);
-        } catch (PulsarConsumerLatterException e) {
-            logger.error("Error processing message", e);
-            reconsume(consumer, message);
         } catch (Exception e) {
             processException = e;
             logger.error("Error processing message", e);
-            try {
-                consumer.negativeAcknowledge(message);
-            } catch (Exception ackException) {
-                logger.error("Error negative acknowledging message", ackException);
-            }
+            consumeExceptionHandlerContainer.handle(consumer, message, processException);
         } finally {
             // Execute after-receive interceptors
             pulsarTemplate.applyAfterReceiveInterceptors(message, deserializedMessage, processException);
-        }
-    }
-
-    /**
-     * Ignore messages with format errors that cannot be parsed
-     */
-    private void ignore(Consumer<byte[]> consumer, Message<byte[]> message) {
-        if (consumer.isConnected()) {
-            try {
-                consumer.acknowledge(message);
-            } catch (PulsarClientException e) {
-                throw new PulsarConsumeReceiveException("Message consumption exception", e);
-            }
-        }
-    }
-
-    private void reconsume(Consumer<byte[]> consumer, Message<byte[]> msg) {
-        logger.debug("Consumer re-consume message: {}", new String(msg.getData()));
-        try {
-            consumer.reconsumeLater(msg, 60, TimeUnit.SECONDS);
-        } catch (PulsarClientException ex) {
-            consumer.negativeAcknowledge(msg);
-            logger.error("Message retry exception", ex);
         }
     }
 

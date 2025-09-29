@@ -11,8 +11,8 @@ import java.util.List;
 
 /**
  * Pulsar configuration selector
- * 
- * <p>Dynamically imports related configuration classes based on the configuration 
+ *
+ * <p>Dynamically imports related configuration classes based on the configuration
  * of the @EnablePulsar annotation. This selector analyzes the annotation attributes
  * and conditionally imports the appropriate configuration classes.
  *

@@ -15,13 +15,13 @@ import java.util.UUID;
 
 /**
  * Multi-tenant interceptor with metadata in message body
- * 
+ *
  * <p>This interceptor handles multi-tenant information and request tracing
  * by embedding metadata directly in the message body, not in message properties.
- * 
+ *
  * <p>When sending messages, the interceptor wraps the original message and adds
  * metadata. When receiving messages, it unwraps the message and extracts metadata.
- * 
+ *
  * <p>Data extraction logic is implemented in the listener container.
  * See: {@link com.github.spring.mq.pulsar.listener.PulsarListenerContainer}
  *

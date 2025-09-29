@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Pulsar performance interceptor configuration
- * 
+ *
  * <p>This configuration class provides automatic setup for performance monitoring
  * interceptor when PulsarClient is available in the application context.
  *

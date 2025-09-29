@@ -29,14 +29,14 @@ public class PulsarMessageHeadersPropagator {
 
     /**
      * Inject trace context into message builder
-     * 
+     *
      * <p>This method adds distributed tracing headers to a Pulsar message builder,
      * enabling trace propagation across message boundaries. The trace context is
      * injected as message properties using standard header names.
      *
      * @param messageBuilder the Pulsar message builder to inject headers into
      * @param traceId        the trace ID as a hexadecimal string
-     * @param spanId         the span ID as a hexadecimal string  
+     * @param spanId         the span ID as a hexadecimal string
      * @param sampled        whether the trace is sampled (affects trace flags)
      */
     public static void injectTraceContext(TypedMessageBuilder<?> messageBuilder,
@@ -105,7 +105,7 @@ public class PulsarMessageHeadersPropagator {
 
     /**
      * Extract trace context from message properties
-     * 
+     *
      * <p>This method extracts distributed tracing information from Pulsar message
      * properties and returns it as a structured TraceContext object. If the required
      * trace headers are not present or invalid, returns null.
@@ -154,7 +154,7 @@ public class PulsarMessageHeadersPropagator {
 
     /**
      * Simple trace context holder
-     * 
+     *
      * <p>This class encapsulates distributed tracing context information extracted
      * from or intended for injection into message headers. It provides a structured
      * way to handle trace propagation data.

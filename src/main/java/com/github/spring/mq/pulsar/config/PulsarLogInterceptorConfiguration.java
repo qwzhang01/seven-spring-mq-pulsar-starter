@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Pulsar logging interceptor configuration
- * 
+ *
  * <p>This configuration class provides automatic setup for message logging
  * interceptor when PulsarClient is available in the application context.
  *

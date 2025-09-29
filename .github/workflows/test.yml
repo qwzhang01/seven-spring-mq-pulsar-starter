@@ -1,0 +1,107 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java-version: [11, 17, 21]
+        
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Start Pulsar
+      run: |
+        docker run -d \
+          --name pulsar \
+          -p 6650:6650 \
+          -p 8080:8080 \
+          apachepulsar/pulsar:latest \
+          bin/pulsar standalone
+        
+        # Wait for Pulsar to be ready
+        timeout 60 bash -c 'until curl -f http://localhost:8080/admin/v2/clusters; do sleep 2; done'
+        
+    - name: Run unit tests
+      run: mvn test -Dtest="!**/*IntegrationTest,!**/*PerformanceTest"
+      
+    - name: Run integration tests
+      run: mvn test -Dtest="**/*IntegrationTest"
+      
+    - name: Run performance tests
+      run: mvn test -Dtest="**/*PerformanceTest"
+      continue-on-error: true
+      
+    - name: Generate test report
+      run: mvn surefire-report:report
+      if: always()
+      
+    - name: Generate coverage report
+      run: mvn jacoco:report
+      if: always()
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-java-${{ matrix.java-version }}
+        path: |
+          target/surefire-reports/
+          target/site/
+          
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      if: matrix.java-version == '17'
+      with:
+        file: target/site/jacoco/jacoco.xml
+        
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Build project
+      run: mvn clean package -DskipTests
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: target/*.jar

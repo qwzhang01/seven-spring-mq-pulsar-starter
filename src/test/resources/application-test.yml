@@ -1,0 +1,74 @@
+spring:
+  pulsar:
+    enabled: true
+    service-url: pulsar://localhost:6650
+    
+    # Producer configuration
+    producer:
+      topic: test-topic
+      send-timeout: 30s
+      block-if-queue-full: false
+      max-pending-messages: 1000
+      batching-enabled: true
+      batching-max-messages: 100
+      batching-max-publish-delay: 10ms
+    
+    # Consumer configuration  
+    consumer:
+      topic: test-topic
+      subscription-name: test-subscription
+      subscription-type: Shared
+      subscription-initial-position: Earliest
+      auto-ack: true
+      retry-time: 3
+      ack-timeout: 30s
+      receiver-queue-size: 1000
+      negative-ack-redelivery-delay: 1000
+
+    # Client configuration
+    client:
+      operation-timeout: 30s
+      connection-timeout: 10s
+      num-io-threads: 1
+      num-listener-threads: 1
+
+    # Transaction configuration
+    transaction:
+      enabled: false
+      timeout: 1m
+
+    # Dead letter queue configuration
+    dead-letter:
+      topic-suffix: "-DLQ"
+      max-retries: 3
+      retry:
+        smart-strategy-enabled: true
+        base-delay: 1s
+        max-delay: 5m
+        retry-window: 24h
+        jitter-enabled: true
+        jitter-factor: 0.2
+      cleanup:
+        auto-cleanup-enabled: true
+        message-expiration: 7d
+        cleanup-cron: "0 0 2 * * ?"
+        retry-info-expiration: 24h
+      monitoring:
+        enabled: true
+        monitoring-interval: 5m
+        health-check-timeout: 30s
+        alert-enabled: false
+        alert-threshold: 100
+      statistics:
+        enabled: true
+        retention-period: 30d
+        detailed-enabled: false
+
+# Logging configuration for tests
+logging:
+  level:
+    com.github.spring.mq.pulsar: DEBUG
+    org.apache.pulsar: WARN
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

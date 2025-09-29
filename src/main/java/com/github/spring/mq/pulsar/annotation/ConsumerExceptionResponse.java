@@ -5,9 +5,14 @@ import com.github.spring.mq.pulsar.domain.ConsumerExceptionResponseAction;
 import java.lang.annotation.*;
 
 /**
- * 消息消费异常处理器注释
+ * Annotation for defining consumer exception response actions
+ * 
+ * <p>This annotation is used in conjunction with {@link ConsumerExceptionHandler}
+ * to specify how exceptions should be handled during message consumption.
+ * It defines the response action that should be taken when an exception occurs.
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

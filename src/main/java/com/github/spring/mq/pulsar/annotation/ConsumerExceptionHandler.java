@@ -3,9 +3,24 @@ package com.github.spring.mq.pulsar.annotation;
 import java.lang.annotation.*;
 
 /**
- * 消息消费异常处理器注释
+ * Annotation for marking methods as consumer exception handlers
+ * 
+ * <p>This annotation is used to mark methods that should handle exceptions
+ * thrown during message consumption. Methods annotated with this annotation
+ * will be automatically registered as exception handlers and invoked when
+ * matching exceptions occur during message processing.
+ * 
+ * <p>Example usage:
+ * <pre>
+ * &#64;ConsumerExceptionHandler({IllegalArgumentException.class, ValidationException.class})
+ * &#64;ConsumerExceptionResponse(ConsumerExceptionResponseAction.NACK)
+ * public void handleValidationErrors(Exception ex) {
+ *     // Handle validation errors
+ * }
+ * </pre>
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

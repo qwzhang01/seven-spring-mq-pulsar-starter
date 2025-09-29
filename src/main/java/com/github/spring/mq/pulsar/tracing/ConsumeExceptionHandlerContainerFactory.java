@@ -5,9 +5,13 @@ import com.github.spring.mq.pulsar.annotation.ConsumerExceptionHandler;
 import java.lang.reflect.Method;
 
 /**
- * 消息消费异常处理器容器工厂
+ * Factory for creating message consumption exception handler containers
+ * 
+ * <p>This factory is responsible for creating and managing exception handler
+ * containers that process exceptions thrown during message consumption.
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public class ConsumeExceptionHandlerContainerFactory {
     private final ConsumeExceptionHandlerContainer consumeExceptionHandlerContainer;

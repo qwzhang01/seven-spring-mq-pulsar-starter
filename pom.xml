@@ -6,7 +6,7 @@
 
     <groupId>io.github.qwzhang01</groupId>
     <artifactId>seven-spring-mq-pulsar-starter</artifactId>
-    <version>1.2.17</version>
+    <version>1.2.18</version>
 
     <url>https://github.com/qwzhang01/seven-spring-mq-pulsar-starter</url>
     <name>Pulsar Spring Boot Starter</name>

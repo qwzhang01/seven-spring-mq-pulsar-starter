@@ -15,12 +15,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 消息消费异常处理器容器
- * <p>
- * 1. 扫描注解创建容器
- * 2. 运行时获取处理器
+ * Container for message consumption exception handlers
+ * 
+ * <p>This container manages exception handlers for message consumption failures.
+ * It provides the following functionality:
+ * <ul>
+ *   <li>Scans annotations to create handler containers</li>
+ *   <li>Retrieves appropriate handlers at runtime</li>
+ *   <li>Executes exception handling logic</li>
+ *   <li>Manages response actions (ACK, NACK, RECONSUME_LATER)</li>
+ * </ul>
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public class ConsumeExceptionHandlerContainer {
     private static final Logger logger = LoggerFactory.getLogger(ConsumeExceptionHandlerContainer.class);
@@ -141,7 +148,13 @@ public class ConsumeExceptionHandlerContainer {
         return handler;
     }
 
-    /*** 异常处理器 */
+    /**
+     * Exception handler record
+     * 
+     * @param bean   The bean instance containing the handler method
+     * @param method The handler method to invoke
+     * @param action The response action to take after handling the exception
+     */
     private record Handler(Object bean, Method method,
                            ConsumerExceptionResponseAction action) {
     }

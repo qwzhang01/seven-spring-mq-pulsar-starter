@@ -15,9 +15,14 @@ import java.lang.reflect.Method;
 
 
 /**
- * 消费者增强注解Bean后处理器
+ * Bean post processor for consumer advice annotations
+ * 
+ * <p>This post processor scans for methods annotated with {@link ConsumerExceptionHandler}
+ * and registers them with the exception handler container factory. It processes beans
+ * after initialization to discover and configure exception handling methods.
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public class ConsumerAdviceAnnotationBeanPostProcessor implements BeanPostProcessor, BeanFactoryAware, DisposableBean {
     private static final Logger logger = LoggerFactory.getLogger(ConsumerAdviceAnnotationBeanPostProcessor.class);

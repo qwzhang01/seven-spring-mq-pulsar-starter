@@ -7,9 +7,15 @@ import com.github.spring.mq.pulsar.exception.JacksonException;
 import com.github.spring.mq.pulsar.exception.PulsarConsumerLatterException;
 
 /**
- * 默认异常处理器
+ * Default exception handler for message consumption
+ * 
+ * <p>Provides default exception handling strategies for common exceptions
+ * that may occur during message consumption. This handler defines how
+ * different types of exceptions should be handled and what response
+ * actions should be taken.
  *
  * @author avinzhang
+ * @since 1.0.0
  */
 public class ConsumeDefaultExceptionHandler {
 

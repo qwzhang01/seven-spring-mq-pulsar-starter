@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Container for message consumption exception handlers
- * 
+ *
  * <p>This container manages exception handlers for message consumption failures.
  * It provides the following functionality:
  * <ul>
@@ -49,11 +49,21 @@ public class ConsumeExceptionHandlerContainer {
         if (exceptionList == null || exceptionList.length == 0) {
             if (!handlerMap.containsKey(Exception.class)) {
                 handlerMap.put(Exception.class, new Handler(bean, method, action));
+            } else {
+                // 优先使用用户自定义的异常处理器
+                if (!(bean instanceof ConsumeDefaultExceptionHandler)) {
+                    handlerMap.put(Exception.class, new Handler(bean, method, action));
+                }
             }
         } else {
             for (Class<? extends Throwable> exception : exceptionList) {
                 if (!handlerMap.containsKey(exception)) {
                     handlerMap.put(exception, new Handler(bean, method, action));
+                } else {
+                    // 优先使用用户自定义的异常处理器
+                    if (!(bean instanceof ConsumeDefaultExceptionHandler)) {
+                        handlerMap.put(exception, new Handler(bean, method, action));
+                    }
                 }
             }
         }
@@ -150,7 +160,7 @@ public class ConsumeExceptionHandlerContainer {
 
     /**
      * Exception handler record
-     * 
+     *
      * @param bean   The bean instance containing the handler method
      * @param method The handler method to invoke
      * @param action The response action to take after handling the exception

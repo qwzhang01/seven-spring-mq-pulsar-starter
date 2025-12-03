@@ -30,20 +30,41 @@ import com.github.spring.mq.pulsar.config.PulsarInterceptorConfiguration;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
 import com.github.spring.mq.pulsar.domain.ListenerType;
 import com.github.spring.mq.pulsar.domain.MsgContext;
-import com.github.spring.mq.pulsar.exception.*;
+import com.github.spring.mq.pulsar.exception.JacksonException;
+import com.github.spring.mq.pulsar.exception.PulsarConsumeInitException;
+import com.github.spring.mq.pulsar.exception.PulsarConsumerNotExistException;
+import com.github.spring.mq.pulsar.exception.PulsarProducerConfigException;
+import com.github.spring.mq.pulsar.exception.PulsarProducerInitException;
 import com.github.spring.mq.pulsar.interceptor.PulsarMessageInterceptor;
 import com.github.spring.mq.pulsar.listener.DeadLetterListenerContainer;
 import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
 import com.github.spring.mq.pulsar.listener.PulsarListenerContainer;
 import com.github.spring.mq.pulsar.tracing.PulsarMessageHeadersPropagator;
 import org.apache.logging.log4j.Logger;
-import org.apache.pulsar.client.api.*;
+import org.apache.pulsar.client.api.Consumer;
+import org.apache.pulsar.client.api.ConsumerBuilder;
+import org.apache.pulsar.client.api.DeadLetterPolicy;
+import org.apache.pulsar.client.api.Message;
+import org.apache.pulsar.client.api.MessageId;
+import org.apache.pulsar.client.api.MessageListener;
+import org.apache.pulsar.client.api.Producer;
+import org.apache.pulsar.client.api.PulsarClient;
+import org.apache.pulsar.client.api.PulsarClientException;
+import org.apache.pulsar.client.api.SubscriptionInitialPosition;
+import org.apache.pulsar.client.api.SubscriptionType;
+import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.apache.pulsar.client.impl.MultiTopicsConsumerImpl;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -484,28 +505,91 @@ public final class PulsarTemplate {
      */
     public <T> T deserialize(byte[] data, String dataKey, Class<T> clazz) {
         try {
-            if (!StringUtils.hasText(dataKey)) {
+            if (ObjectUtils.isEmpty(dataKey)) {
+                // String 类型直接转换
                 if (clazz == String.class) {
-                    return clazz.cast(new String(data));
+                    return clazz.cast(new String(data, StandardCharsets.UTF_8));
                 }
+                // byte[] 类型直接返回
                 if (clazz == byte[].class) {
                     return clazz.cast(data);
                 }
-                return objectMapper.readValue(data, clazz);
+                // 基础类型的转换
+                return deserializePrimitiveType(data, clazz);
             }
+
+            // 处理带 dataKey 的情况
             JsonNode node = objectMapper.readTree(data);
             JsonNode dataTree = node.get(dataKey);
-            String text = dataTree.asText();
+            if (dataTree == null) {
+                throw new JacksonException("Data key '" + dataKey + "' not found in message",
+                        new IllegalArgumentException("Missing data key: " + dataKey));
+            }
+
+            // String 类型
             if (clazz == String.class) {
-                return clazz.cast(text);
+                if (dataTree.isObject()) {
+                    return (T) objectMapper.writeValueAsString(dataTree);
+                }
+                return (T) dataTree.asText();
             }
+            // byte[] 类型
             if (clazz == byte[].class) {
-                return clazz.cast(text.getBytes(StandardCharsets.UTF_8));
+                return clazz.cast(dataTree.asText().getBytes(StandardCharsets.UTF_8));
             }
-            return objectMapper.readValue(text, clazz);
+            // 基础类型和复杂对象
+            return objectMapper.treeToValue(dataTree, clazz);
+        } catch (JacksonException e) {
+            throw e;
         } catch (Exception e) {
             throw new JacksonException("Failed to deserialize object", e);
         }
+    }
+
+    /**
+     * Deserialize primitive types and wrapper types
+     */
+    @SuppressWarnings("unchecked")
+    private <T> T deserializePrimitiveType(byte[] data, Class<T> clazz) throws Exception {
+        String strValue = new String(data, StandardCharsets.UTF_8).trim();
+
+        // Boolean 类型
+        if (clazz == Boolean.class || clazz == boolean.class) {
+            return (T) Boolean.valueOf(strValue);
+        }
+        // Integer 类型
+        if (clazz == Integer.class || clazz == int.class) {
+            return (T) Integer.valueOf(strValue);
+        }
+        // Long 类型
+        if (clazz == Long.class || clazz == long.class) {
+            return (T) Long.valueOf(strValue);
+        }
+        // Double 类型
+        if (clazz == Double.class || clazz == double.class) {
+            return (T) Double.valueOf(strValue);
+        }
+        // Float 类型
+        if (clazz == Float.class || clazz == float.class) {
+            return (T) Float.valueOf(strValue);
+        }
+        // Short 类型
+        if (clazz == Short.class || clazz == short.class) {
+            return (T) Short.valueOf(strValue);
+        }
+        // Byte 类型
+        if (clazz == Byte.class || clazz == byte.class) {
+            return (T) Byte.valueOf(strValue);
+        }
+        // Character 类型
+        if (clazz == Character.class || clazz == char.class) {
+            if (strValue.length() != 1) {
+                throw new IllegalArgumentException("Cannot convert string of length " + strValue.length() + " to char");
+            }
+        }
+
+        // 其他复杂类型使用 Jackson 反序列化
+        return objectMapper.readValue(data, clazz);
     }
 
     /**

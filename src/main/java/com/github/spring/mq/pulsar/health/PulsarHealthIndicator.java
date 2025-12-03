@@ -61,29 +61,37 @@ public final class PulsarHealthIndicator {
      */
     public Map<String, Object> health() {
         Map<String, Object> health = new HashMap<>();
+        Map<String, Object> pulsarDetails = new HashMap<>();
 
         try {
+            // Handle null client
+            if (pulsarClient == null) {
+                health.put("status", "DOWN");
+                pulsarDetails.put("status", "Client not available");
+                health.put("pulsar", pulsarDetails);
+                return health;
+            }
+
             // Check Pulsar client status
             if (pulsarClient.isClosed()) {
                 health.put("status", "DOWN");
-                health.put("details", Map.of("status", "Client is closed"));
+                pulsarDetails.put("status", "Disconnected");
+                health.put("pulsar", pulsarDetails);
                 return health;
             }
 
             // Try to get cluster information to verify connection
             // More health check logic can be added here
             health.put("status", "UP");
-            health.put("details", Map.of(
-                    "status", "Connected",
-                    "client", "Active"
-            ));
+            pulsarDetails.put("status", "Connected");
+            pulsarDetails.put("checkTime", System.currentTimeMillis());
+            health.put("pulsar", pulsarDetails);
 
         } catch (Exception e) {
             health.put("status", "DOWN");
-            health.put("details", Map.of(
-                    "status", "Connection failed",
-                    "error", e.getMessage()
-            ));
+            pulsarDetails.put("status", "Connection failed");
+            pulsarDetails.put("error", e.getMessage());
+            health.put("pulsar", pulsarDetails);
         }
 
         return health;

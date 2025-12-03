@@ -67,10 +67,6 @@ class ExceptionHandlingTest {
     void setUp() {
         exceptionHandlerContainer = new ConsumeExceptionHandlerContainer();
         testExceptionHandler = new TestExceptionHandler();
-
-        // Setup mock message
-        when(mockMessage.getData()).thenReturn("test message".getBytes());
-        when(mockConsumer.isConnected()).thenReturn(true);
     }
 
     @Test
@@ -80,6 +76,9 @@ class ExceptionHandlingTest {
         ConsumerExceptionHandler annotation = ackMethod.getAnnotation(ConsumerExceptionHandler.class);
 
         exceptionHandlerContainer.create(testExceptionHandler, ackMethod, annotation);
+
+        // Setup mock consumer
+        when(mockConsumer.isConnected()).thenReturn(true);
 
         // Trigger exception handling
         RuntimeException testException = new RuntimeException("Test exception");
@@ -100,6 +99,9 @@ class ExceptionHandlingTest {
 
         exceptionHandlerContainer.create(testExceptionHandler, nackMethod, annotation);
 
+        // Setup mock message
+        when(mockMessage.getData()).thenReturn("test message".getBytes());
+
         // Trigger exception handling
         IllegalArgumentException testException = new IllegalArgumentException("Test exception");
         exceptionHandlerContainer.handle(mockConsumer, mockMessage, testException);
@@ -118,6 +120,9 @@ class ExceptionHandlingTest {
         ConsumerExceptionHandler annotation = reconsumeLaterMethod.getAnnotation(ConsumerExceptionHandler.class);
 
         exceptionHandlerContainer.create(testExceptionHandler, reconsumeLaterMethod, annotation);
+
+        // Setup mock message
+        when(mockMessage.getData()).thenReturn("test message".getBytes());
 
         // Trigger exception handling
         PulsarConsumerLatterException testException = new PulsarConsumerLatterException("Test exception");
@@ -138,6 +143,9 @@ class ExceptionHandlingTest {
         ConsumerExceptionHandler annotation = runtimeExceptionMethod.getAnnotation(ConsumerExceptionHandler.class);
         exceptionHandlerContainer.create(testExceptionHandler, runtimeExceptionMethod, annotation);
 
+        // Setup mock message
+        when(mockMessage.getData()).thenReturn("test message".getBytes());
+
         // Trigger with IllegalArgumentException (subclass of RuntimeException)
         IllegalArgumentException testException = new IllegalArgumentException("Test exception");
         exceptionHandlerContainer.handle(mockConsumer, mockMessage, testException);
@@ -153,6 +161,9 @@ class ExceptionHandlingTest {
         Method defaultMethod = TestExceptionHandler.class.getMethod("handleDefaultException", Exception.class);
         ConsumerExceptionHandler annotation = defaultMethod.getAnnotation(ConsumerExceptionHandler.class);
         exceptionHandlerContainer.create(testExceptionHandler, defaultMethod, annotation);
+
+        // Setup mock message
+        when(mockMessage.getData()).thenReturn("test message".getBytes());
 
         // Trigger with any exception
         CustomException testException = new CustomException("Custom exception");

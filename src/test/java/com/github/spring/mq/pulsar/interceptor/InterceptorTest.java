@@ -60,7 +60,7 @@ class InterceptorTest {
     @BeforeEach
     void setUp() {
         testInterceptor = new TestPulsarMessageInterceptor();
-        when(mockMessage.getData()).thenReturn("test message".getBytes());
+        // Removed unnecessary stubbing - will be set up in individual tests as needed
     }
 
     @Test
@@ -141,7 +141,7 @@ class InterceptorTest {
         boolean result1 = filteringInterceptor.beforeReceive(mockMessage);
         assertThat(result1).isFalse();
 
-        // Mock message with allowed data
+        // Reset and mock message with allowed data
         when(mockMessage.getData()).thenReturn("allow-me".getBytes());
         boolean result2 = filteringInterceptor.beforeReceive(mockMessage);
         assertThat(result2).isTrue();

@@ -24,11 +24,15 @@
 
 package com.github.spring.mq.pulsar;
 
+import com.github.spring.mq.pulsar.config.PulsarAutoConfiguration;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.PulsarContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -52,6 +56,12 @@ import org.testcontainers.utility.DockerImageName;
 @ActiveProfiles("test")
 @Testcontainers
 public abstract class TestBase {
+
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    @Import(PulsarAutoConfiguration.class)
+    static class TestConfiguration {
+    }
 
     @Container
     protected static final PulsarContainer PULSAR_CONTAINER = new PulsarContainer(

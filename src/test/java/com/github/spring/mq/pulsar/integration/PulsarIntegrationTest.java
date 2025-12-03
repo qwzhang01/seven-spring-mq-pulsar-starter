@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.concurrent.CountDownLatch;
@@ -169,6 +170,7 @@ class PulsarIntegrationTest extends TestBase {
 
     @Configuration
     @EnablePulsar
+    @Import(com.github.spring.mq.pulsar.config.PulsarAutoConfiguration.class)
     static class TestConfiguration {
 
         @Bean

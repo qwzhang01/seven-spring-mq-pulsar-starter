@@ -26,6 +26,7 @@ package com.github.spring.mq.pulsar.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
+import com.github.spring.mq.pulsar.exception.JacksonException;
 import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -291,7 +292,7 @@ class PulsarTemplateDeserializeTest {
         byte[] data = jsonData.getBytes();
 
         assertThatCode(() -> pulsarTemplate.deserialize(data, "nonExistentKey", String.class))
-                .isInstanceOf(com.github.spring.mq.pulsar.exception.JacksonException.class)
+                .isInstanceOf(JacksonException.class)
                 .hasMessageContaining("Data key 'nonExistentKey' not found in message");
     }
 
@@ -321,7 +322,7 @@ class PulsarTemplateDeserializeTest {
         byte[] invalidData = "not-a-number".getBytes();
 
         assertThatCode(() -> pulsarTemplate.deserialize(invalidData, null, Integer.class))
-                .isInstanceOf(com.github.spring.mq.pulsar.exception.JacksonException.class);
+                .isInstanceOf(JacksonException.class);
     }
 
     @Test
@@ -341,7 +342,7 @@ class PulsarTemplateDeserializeTest {
         byte[] invalidJson = "{invalid json}".getBytes();
 
         assertThatCode(() -> pulsarTemplate.deserialize(invalidJson, null, TestMessage.class))
-                .isInstanceOf(com.github.spring.mq.pulsar.exception.JacksonException.class);
+                .isInstanceOf(JacksonException.class);
     }
 
     @Test

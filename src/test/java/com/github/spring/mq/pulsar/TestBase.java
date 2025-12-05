@@ -57,17 +57,10 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 public abstract class TestBase {
 
-    @SpringBootConfiguration
-    @EnableAutoConfiguration
-    @Import(PulsarAutoConfiguration.class)
-    static class TestConfiguration {
-    }
-
     @Container
     protected static final PulsarContainer PULSAR_CONTAINER = new PulsarContainer(
             DockerImageName.parse("apachepulsar/pulsar:3.2.4")
     );
-
     protected static PulsarClient testPulsarClient;
 
     @BeforeAll
@@ -103,5 +96,11 @@ public abstract class TestBase {
      */
     protected PulsarClient getTestPulsarClient() {
         return testPulsarClient;
+    }
+
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    @Import(PulsarAutoConfiguration.class)
+    static class TestConfiguration {
     }
 }

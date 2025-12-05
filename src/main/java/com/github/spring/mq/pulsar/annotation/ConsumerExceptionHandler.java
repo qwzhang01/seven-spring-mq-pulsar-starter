@@ -28,12 +28,12 @@ import java.lang.annotation.*;
 
 /**
  * Annotation for marking methods as consumer exception handlers
- * 
+ *
  * <p>This annotation is used to mark methods that should handle exceptions
  * thrown during message consumption. Methods annotated with this annotation
  * will be automatically registered as exception handlers and invoked when
  * matching exceptions occur during message processing.
- * 
+ *
  * <p>Example usage:
  * <pre>
  * &#64;ConsumerExceptionHandler({IllegalArgumentException.class, ValidationException.class})

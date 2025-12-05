@@ -30,7 +30,7 @@ import java.lang.reflect.Method;
 
 /**
  * Factory for creating message consumption exception handler containers
- * 
+ *
  * <p>This factory is responsible for creating and managing exception handler
  * containers that process exceptions thrown during message consumption.
  *

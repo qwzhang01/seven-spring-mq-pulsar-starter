@@ -27,6 +27,7 @@ package com.github.spring.mq.pulsar.core;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
 import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
+import io.micrometer.tracing.Tracer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -53,6 +54,7 @@ class PulsarTemplateDeserializeTest {
 
     private PulsarTemplate pulsarTemplate;
     private ObjectMapper objectMapper;
+    private Tracer tracer;
 
     @BeforeEach
     void setUp() {
@@ -68,7 +70,8 @@ class PulsarTemplateDeserializeTest {
                 pulsarClient,
                 pulsarProperties,
                 objectMapper,
-                deadLetterProcessor
+                deadLetterProcessor,
+                tracer
         );
     }
 

@@ -96,22 +96,24 @@ public final class PulsarTemplate {
     private final PulsarClient pulsarClient;
     private final PulsarProperties pulsarProperties;
     private final ObjectMapper objectMapper;
-    private final Tracer tracer;
     private final DeadLetterMessageProcessor deadLetterMessageProcessor;
+    private final Tracer tracer;
     private final ConcurrentHashMap<String, Producer<byte[]>> producerCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Consumer<byte[]>> consumerCache = new ConcurrentHashMap<>();
     private final List<DeadLetterListenerContainer> deadLetterListenerContainers = new ArrayList<>();
 
     private PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry;
 
-    public PulsarTemplate(PulsarClient pulsarClient, PulsarProperties pulsarProperties,
-                          ObjectMapper objectMapper, Tracer tracer,
-                          DeadLetterMessageProcessor deadLetterMessageProcessor) {
+    public PulsarTemplate(PulsarClient pulsarClient,
+                          PulsarProperties pulsarProperties,
+                          ObjectMapper objectMapper,
+                          DeadLetterMessageProcessor deadLetterMessageProcessor,
+                          Tracer tracer) {
         this.pulsarClient = pulsarClient;
         this.pulsarProperties = pulsarProperties;
         this.objectMapper = objectMapper;
-        this.tracer = tracer;
         this.deadLetterMessageProcessor = deadLetterMessageProcessor;
+        this.tracer = tracer;
     }
 
     public void setInterceptorRegistry(PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry) {

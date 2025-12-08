@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.TestBase;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
 import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
+import io.micrometer.tracing.Tracer;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +56,7 @@ class PulsarTemplateTest extends TestBase {
     private PulsarTemplate pulsarTemplate;
     private PulsarProperties pulsarProperties;
     private ObjectMapper objectMapper;
+    private Tracer tracer;
 
     @BeforeEach
     void setUp() {
@@ -70,7 +72,8 @@ class PulsarTemplateTest extends TestBase {
                 getTestPulsarClient(),
                 pulsarProperties,
                 objectMapper,
-                deadLetterProcessor
+                deadLetterProcessor,
+                tracer
         );
     }
 

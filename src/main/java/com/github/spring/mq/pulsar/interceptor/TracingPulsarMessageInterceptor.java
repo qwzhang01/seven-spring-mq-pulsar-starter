@@ -25,6 +25,7 @@
 package com.github.spring.mq.pulsar.interceptor;
 
 import com.github.spring.mq.pulsar.domain.MsgContext;
+import com.github.spring.mq.pulsar.domain.MsgMetaKey;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.TraceContext;
 import io.micrometer.tracing.Tracer;
@@ -33,7 +34,6 @@ import org.apache.pulsar.client.api.MessageId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.util.StringUtils;
 
 import java.util.Map;
 
@@ -61,11 +61,6 @@ import java.util.Map;
 public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(TracingPulsarMessageInterceptor.class);
-
-    // Standard distributed tracing header names following OpenTelemetry conventions
-    private static final String TRACE_ID_HEADER = "X-Trace-Id";
-    private static final String SPAN_ID_HEADER = "X-Span-Id";
-    private static final String TRACE_FLAGS_HEADER = "X-Trace-Flags";
 
     private final Tracer tracer;
 
@@ -194,47 +189,29 @@ public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor
         try {
             // Extract trace context from message properties using standard headers
             Map<String, String> properties = message.getProperties();
-            String traceId = properties.get(TRACE_ID_HEADER);
-            String spanId = properties.get(SPAN_ID_HEADER);
+            Span start = tracer.spanBuilder().setParent(new TraceContext() {
+                @Override
+                public String traceId() {
+                    return properties.get(MsgMetaKey.TRACER_TRACE_ID.getCode());
+                }
 
-            Span span;
-            if (StringUtils.hasText(traceId) && StringUtils.hasText(spanId)) {
-                // Continue existing trace by creating a child span
-                logger.debug("Continuing trace from message - traceId: {}, spanId: {}, topic: {}",
-                        traceId, spanId, message.getTopicName());
+                @Override
+                public String parentId() {
+                    return properties.get(MsgMetaKey.TRACER_PARENT_ID.getCode());
+                }
 
-                span = tracer.nextSpan()
-                        .name("pulsar.receive")
-                        .tag("messaging.system", "pulsar")
-                        .tag("messaging.destination", message.getTopicName())
-                        .tag("messaging.operation", "receive")
-                        .tag("messaging.message_id", message.getMessageId().toString())
-                        .tag("parent.trace_id", traceId)
-                        .tag("parent.span_id", spanId)
-                        .start();
-            } else {
-                // Start new trace if no trace context found in message
-                span = tracer.nextSpan()
-                        .name("pulsar.receive")
-                        .tag("messaging.system", "pulsar")
-                        .tag("messaging.destination", message.getTopicName())
-                        .tag("messaging.operation", "receive")
-                        .tag("messaging.message_id", message.getMessageId().toString())
-                        .start();
+                @Override
+                public String spanId() {
+                    return properties.get(MsgMetaKey.TRACER_SPAN_ID.getCode());
+                }
 
-                logger.debug("Starting new trace for message - topic: {}", message.getTopicName());
-            }
+                @Override
+                public Boolean sampled() {
+                    return Boolean.valueOf(properties.get(MsgMetaKey.TRACER_SAMPLED.getCode()));
+                }
+            }).start();
 
-            TraceContext traceContext = span.context();
-
-            // Store trace information in thread-local context for business logic access
-            MsgContext.setTraceId(traceContext.traceId());
-            MsgContext.setSpanId(traceContext.spanId());
-
-            // Set MDC (Mapped Diagnostic Context) for structured logging
-            MDC.put("traceId", traceContext.traceId());
-            MDC.put("spanId", traceContext.spanId());
-
+            tracer.withSpan(start);
             return true;
         } catch (Exception e) {
             logger.warn("Failed to create tracing span for message receive", e);
@@ -284,6 +261,7 @@ public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor
             MsgContext.remove();
         }
     }
+
 
     /**
      * Returns the execution order of this interceptor

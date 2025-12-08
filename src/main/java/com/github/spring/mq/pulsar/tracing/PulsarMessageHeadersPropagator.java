@@ -25,6 +25,8 @@
 package com.github.spring.mq.pulsar.tracing;
 
 import com.github.spring.mq.pulsar.domain.MsgMetaKey;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,27 +66,46 @@ public class PulsarMessageHeadersPropagator {
      * @param sampled        whether the trace is sampled (affects trace flags)
      */
     public static void injectTraceContext(TypedMessageBuilder<?> messageBuilder,
+                                          String parentId,
                                           String traceId,
                                           String spanId,
-                                          boolean sampled) {
+                                          Boolean sampled) {
         if (messageBuilder == null) {
             return;
         }
 
         try {
+            if (parentId != null && !parentId.isEmpty()) {
+                messageBuilder.property(MsgMetaKey.TRACER_PARENT_ID.getCode(), parentId);
+            }
             if (traceId != null && !traceId.isEmpty()) {
-                messageBuilder.property(MsgMetaKey.TRACE.getCode(), traceId);
+                messageBuilder.property(MsgMetaKey.TRACER_TRACE_ID.getCode(), traceId);
             }
             if (spanId != null && !spanId.isEmpty()) {
-                messageBuilder.property(MsgMetaKey.SPAN.getCode(), spanId);
+                messageBuilder.property(MsgMetaKey.TRACER_SPAN_ID.getCode(), spanId);
             }
-            messageBuilder.property(MsgMetaKey.TRACE_FLAG.getCode(), sampled ? "01" : "00");
+            if (sampled != null) {
+                messageBuilder.property(MsgMetaKey.TRACER_SPAN_ID.getCode(), String.valueOf(sampled));
+            }
 
-            logger.debug("Injected trace context - traceId: {}, spanId: {}, sampled: {}",
-                    traceId, spanId, sampled);
+            logger.debug("Injected trace context - parentId: {}, traceId: {}, spanId: {}, sampled: {}",
+                    parentId, traceId, spanId, sampled);
         } catch (Exception e) {
             logger.warn("Failed to inject trace context into message", e);
         }
+    }
+
+    public static void injectTraceContext(TypedMessageBuilder<?> messageBuilder,
+                                          Map<String, String> contextMap) {
+
+        if (contextMap == null || contextMap.isEmpty()) {
+            return;
+        }
+        String parentId = contextMap.get("traceId");
+        String traceId = contextMap.get("traceId");
+        String spanId = contextMap.get("spanId");
+        String sampled = contextMap.get("sampled");
+        injectTraceContext(messageBuilder, parentId, traceId, spanId, Boolean.valueOf(sampled));
     }
 
     public static void injectCorp(TypedMessageBuilder<byte[]> messageBuilder, String corpKey, String appName, LocalDateTime time, String msgId) {
@@ -137,26 +158,36 @@ public class PulsarMessageHeadersPropagator {
      * @param properties the message properties map containing potential trace headers
      * @return TraceContext object containing extracted trace information, or null if not found
      */
-    public static TraceContext extractTraceContext(Map<String, String> properties) {
+    public static Tracer.SpanInScope extractTraceContext(Tracer tracer, Map<String, String> properties) {
         if (properties == null || properties.isEmpty()) {
             return null;
         }
 
         try {
-            String traceId = properties.get(MsgMetaKey.TRACE.getCode());
-            String spanId = properties.get(MsgMetaKey.SPAN.getCode());
-            String flags = properties.get(MsgMetaKey.TRACE_FLAG.getCode());
+            // Extract trace context from message properties using standard headers
+            Span start = tracer.spanBuilder().setParent(new io.micrometer.tracing.TraceContext() {
+                @Override
+                public String traceId() {
+                    return properties.get(MsgMetaKey.TRACER_TRACE_ID.getCode());
+                }
 
-            if (traceId == null || spanId == null) {
-                return null;
-            }
+                @Override
+                public String parentId() {
+                    return properties.get(MsgMetaKey.TRACER_PARENT_ID.getCode());
+                }
 
-            boolean sampled = "01".equals(flags);
+                @Override
+                public String spanId() {
+                    return properties.get(MsgMetaKey.TRACER_SPAN_ID.getCode());
+                }
 
-            logger.debug("Extracted trace context - traceId: {}, spanId: {}, sampled: {}",
-                    traceId, spanId, sampled);
+                @Override
+                public Boolean sampled() {
+                    return Boolean.valueOf(properties.get(MsgMetaKey.TRACER_SAMPLED.getCode()));
+                }
+            }).start();
 
-            return new TraceContext(traceId, spanId, sampled);
+            return tracer.withSpan(start);
         } catch (Exception e) {
             logger.warn("Failed to extract trace context from message properties", e);
             return null;

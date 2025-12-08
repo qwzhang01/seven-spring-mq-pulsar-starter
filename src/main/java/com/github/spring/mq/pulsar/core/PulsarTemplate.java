@@ -40,6 +40,9 @@ import com.github.spring.mq.pulsar.listener.DeadLetterListenerContainer;
 import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
 import com.github.spring.mq.pulsar.listener.PulsarListenerContainer;
 import com.github.spring.mq.pulsar.tracing.PulsarMessageHeadersPropagator;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import org.apache.logging.log4j.Logger;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.ConsumerBuilder;
@@ -54,6 +57,7 @@ import org.apache.pulsar.client.api.SubscriptionInitialPosition;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.apache.pulsar.client.impl.MultiTopicsConsumerImpl;
+import org.slf4j.MDC;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
@@ -64,6 +68,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -91,6 +96,7 @@ public final class PulsarTemplate {
     private final PulsarClient pulsarClient;
     private final PulsarProperties pulsarProperties;
     private final ObjectMapper objectMapper;
+    private final Tracer tracer;
     private final DeadLetterMessageProcessor deadLetterMessageProcessor;
     private final ConcurrentHashMap<String, Producer<byte[]>> producerCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Consumer<byte[]>> consumerCache = new ConcurrentHashMap<>();
@@ -99,11 +105,12 @@ public final class PulsarTemplate {
     private PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry;
 
     public PulsarTemplate(PulsarClient pulsarClient, PulsarProperties pulsarProperties,
-                          ObjectMapper objectMapper,
+                          ObjectMapper objectMapper, Tracer tracer,
                           DeadLetterMessageProcessor deadLetterMessageProcessor) {
         this.pulsarClient = pulsarClient;
         this.pulsarProperties = pulsarProperties;
         this.objectMapper = objectMapper;
+        this.tracer = tracer;
         this.deadLetterMessageProcessor = deadLetterMessageProcessor;
     }
 
@@ -737,13 +744,15 @@ public final class PulsarTemplate {
      */
     private void injectTraceContext(TypedMessageBuilder<byte[]> messageBuilder) {
         try {
-            String traceId = MsgContext.getTraceId();
-            String spanId = MsgContext.getSpanId();
-
             // Inject trace information
-            if (traceId != null && spanId != null) {
-                PulsarMessageHeadersPropagator.injectTraceContext(messageBuilder, traceId, spanId, true);
-                logger.debug("Injected trace context into message - traceId: {}, spanId: {}", traceId, spanId);
+            if (tracer != null) {
+                Optional<TraceContext> ctxOpt = Optional.ofNullable(tracer.currentSpan()).map(Span::context);
+                if (ctxOpt.isPresent()) {
+                    PulsarMessageHeadersPropagator.injectTraceContext(messageBuilder,
+                            ctxOpt.get().parentId(), ctxOpt.get().traceId(), ctxOpt.get().spanId(), ctxOpt.get().sampled());
+                } else {
+                    PulsarMessageHeadersPropagator.injectTraceContext(messageBuilder, MDC.getCopyOfContextMap());
+                }
             }
 
             // Inject multi-tenant information

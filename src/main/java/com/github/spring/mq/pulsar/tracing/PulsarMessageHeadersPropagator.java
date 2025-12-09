@@ -25,8 +25,7 @@
 package com.github.spring.mq.pulsar.tracing;
 
 import com.github.spring.mq.pulsar.domain.MsgMetaKey;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.propagation.Propagator;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,78 +35,57 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 /**
- * Utility class for propagating trace context through Pulsar message headers
+ * Utility class for propagating trace context and metadata through Pulsar message headers
  *
- * <p>This class provides methods to inject and extract trace context information
- * from Pulsar message properties. It supports standard trace propagation headers:
+ * <p>Provides methods for injecting and extracting:
  * <ul>
- *   <li>X-Trace-Id: The trace identifier</li>
- *   <li>X-Span-Id: The span identifier</li>
- *   <li>X-Trace-Flags: Trace sampling flags</li>
+ *   <li>Distributed tracing context</li>
+ *   <li>Enterprise identifier (corpKey)</li>
+ *   <li>Message routing information</li>
  * </ul>
  *
- * @author avinzhang
- * @since 1.2.16
+ * <p>Updated to use Micrometer Tracing Propagator API for context propagation
  */
 public class PulsarMessageHeadersPropagator {
 
     private static final Logger logger = LoggerFactory.getLogger(PulsarMessageHeadersPropagator.class);
 
     /**
-     * Inject trace context into message builder
+     * Injects trace context properties into message builder
      *
-     * <p>This method adds distributed tracing headers to a Pulsar message builder,
-     * enabling trace propagation across message boundaries. The trace context is
-     * injected as message properties using standard header names.
+     * <p>This method propagates the current trace context by injecting
+     * all tracing properties as message headers using the configured
+     * {@link Propagator} implementation.
      *
      * @param messageBuilder the Pulsar message builder to inject headers into
-     * @param traceId        the trace ID as a hexadecimal string
-     * @param spanId         the span ID as a hexadecimal string
-     * @param sampled        whether the trace is sampled (affects trace flags)
+     * @param contextMap     the trace context properties to inject
      */
-    public static void injectTraceContext(TypedMessageBuilder<?> messageBuilder,
-                                          String parentId,
-                                          String traceId,
-                                          String spanId,
-                                          Boolean sampled) {
-        if (messageBuilder == null) {
-            return;
-        }
-
-        try {
-            if (parentId != null && !parentId.isEmpty()) {
-                messageBuilder.property(MsgMetaKey.TRACER_PARENT_ID.getCode(), parentId);
-            }
-            if (traceId != null && !traceId.isEmpty()) {
-                messageBuilder.property(MsgMetaKey.TRACER_TRACE_ID.getCode(), traceId);
-            }
-            if (spanId != null && !spanId.isEmpty()) {
-                messageBuilder.property(MsgMetaKey.TRACER_SPAN_ID.getCode(), spanId);
-            }
-            if (sampled != null) {
-                messageBuilder.property(MsgMetaKey.TRACER_SPAN_ID.getCode(), String.valueOf(sampled));
-            }
-
-            logger.debug("Injected trace context - parentId: {}, traceId: {}, spanId: {}, sampled: {}",
-                    parentId, traceId, spanId, sampled);
-        } catch (Exception e) {
-            logger.warn("Failed to inject trace context into message", e);
-        }
-    }
-
     public static void injectTraceContext(TypedMessageBuilder<?> messageBuilder,
                                           Map<String, String> contextMap) {
 
         if (contextMap == null || contextMap.isEmpty()) {
             return;
         }
-        String parentId = contextMap.get("traceId");
-        String traceId = contextMap.get("traceId");
-        String spanId = contextMap.get("spanId");
-        String sampled = contextMap.get("sampled");
-        injectTraceContext(messageBuilder, parentId, traceId, spanId, Boolean.valueOf(sampled));
+        contextMap.forEach(messageBuilder::property);
     }
 
+    /**
+     * Injects enterprise metadata into message builder
+     *
+     * <p>Adds the following enterprise context information as message properties:
+     * <ul>
+     *   <li>Enterprise identifier (corpKey)</li>
+     *   <li>Application name</li>
+     *   <li>Message timestamp</li>
+     *   <li>Unique message ID</li>
+     * </ul>
+     *
+     * @param messageBuilder the Pulsar message builder to inject headers into
+     * @param corpKey       enterprise identifier
+     * @param appName       application name
+     * @param time          message timestamp
+     * @param msgId         unique message identifier
+     */
     public static void injectCorp(TypedMessageBuilder<byte[]> messageBuilder, String corpKey, String appName, LocalDateTime time, String msgId) {
         if (messageBuilder == null) {
             return;
@@ -149,51 +127,11 @@ public class PulsarMessageHeadersPropagator {
     }
 
     /**
-     * Extract trace context from message properties
+     * Extracts message routing information from properties
      *
-     * <p>This method extracts distributed tracing information from Pulsar message
-     * properties and returns it as a structured TraceContext object. If the required
-     * trace headers are not present or invalid, returns null.
-     *
-     * @param properties the message properties map containing potential trace headers
-     * @return TraceContext object containing extracted trace information, or null if not found
+     * @param properties message properties
+     * @return extracted message route, or null if not found
      */
-    public static Tracer.SpanInScope extractTraceContext(Tracer tracer, Map<String, String> properties) {
-        if (properties == null || properties.isEmpty()) {
-            return null;
-        }
-
-        try {
-            // Extract trace context from message properties using standard headers
-            Span start = tracer.spanBuilder().setParent(new io.micrometer.tracing.TraceContext() {
-                @Override
-                public String traceId() {
-                    return properties.get(MsgMetaKey.TRACER_TRACE_ID.getCode());
-                }
-
-                @Override
-                public String parentId() {
-                    return properties.get(MsgMetaKey.TRACER_PARENT_ID.getCode());
-                }
-
-                @Override
-                public String spanId() {
-                    return properties.get(MsgMetaKey.TRACER_SPAN_ID.getCode());
-                }
-
-                @Override
-                public Boolean sampled() {
-                    return Boolean.valueOf(properties.get(MsgMetaKey.TRACER_SAMPLED.getCode()));
-                }
-            }).start();
-
-            return tracer.withSpan(start);
-        } catch (Exception e) {
-            logger.warn("Failed to extract trace context from message properties", e);
-            return null;
-        }
-    }
-
     public static String extractMsgRoute(Map<String, String> properties) {
         if (properties == null || properties.isEmpty()) {
             return null;
@@ -208,42 +146,21 @@ public class PulsarMessageHeadersPropagator {
     }
 
     /**
-     * Simple trace context holder
+     * Extracts enterprise identifier from properties
      *
-     * <p>This class encapsulates distributed tracing context information extracted
-     * from or intended for injection into message headers. It provides a structured
-     * way to handle trace propagation data.
+     * @param properties message properties
+     * @return extracted enterprise identifier, or null if not found
      */
-    public static class TraceContext {
-        private final String traceId;
-        private final String spanId;
-        private final boolean sampled;
-
-        public TraceContext(String traceId, String spanId, boolean sampled) {
-            this.traceId = traceId;
-            this.spanId = spanId;
-            this.sampled = sampled;
+    public static String extractCorp(Map<String, String> properties) {
+        if (properties == null || properties.isEmpty()) {
+            return null;
         }
 
-        public String getTraceId() {
-            return traceId;
-        }
-
-        public String getSpanId() {
-            return spanId;
-        }
-
-        public boolean isSampled() {
-            return sampled;
-        }
-
-        @Override
-        public String toString() {
-            return "TraceContext{" +
-                    "traceId='" + traceId + '\'' +
-                    ", spanId='" + spanId + '\'' +
-                    ", sampled=" + sampled +
-                    '}';
+        try {
+            return properties.get(MsgMetaKey.CORP.getCode());
+        } catch (Exception e) {
+            logger.warn("Failed to extract corp context from message properties", e);
+            return null;
         }
     }
 }

@@ -29,7 +29,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.config.PulsarInterceptorConfiguration;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
 import com.github.spring.mq.pulsar.domain.ListenerType;
-import com.github.spring.mq.pulsar.domain.MsgContext;
 import com.github.spring.mq.pulsar.exception.JacksonException;
 import com.github.spring.mq.pulsar.exception.PulsarConsumeInitException;
 import com.github.spring.mq.pulsar.exception.PulsarConsumerNotExistException;
@@ -39,9 +38,6 @@ import com.github.spring.mq.pulsar.interceptor.PulsarMessageInterceptor;
 import com.github.spring.mq.pulsar.listener.DeadLetterListenerContainer;
 import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
 import com.github.spring.mq.pulsar.listener.PulsarListenerContainer;
-import com.github.spring.mq.pulsar.tracing.PulsarMessageHeadersPropagator;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
 import io.micrometer.tracing.Tracer;
 import org.apache.logging.log4j.Logger;
 import org.apache.pulsar.client.api.Consumer;
@@ -57,18 +53,14 @@ import org.apache.pulsar.client.api.SubscriptionInitialPosition;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.apache.pulsar.client.impl.MultiTopicsConsumerImpl;
-import org.slf4j.MDC;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -150,8 +142,7 @@ public final class PulsarTemplate {
                 messageBuilder.key(key);
             }
 
-            // Inject trace context into message headers
-            injectTraceContext(messageBuilder);
+            applyBeforeHandleSendMessageInterceptors(messageBuilder);
 
             messageId = messageBuilder.send();
             return messageId;
@@ -210,8 +201,7 @@ public final class PulsarTemplate {
                 messageBuilder.key(key);
             }
 
-            // Inject trace context into message headers
-            injectTraceContext(messageBuilder);
+            applyBeforeHandleSendMessageInterceptors(messageBuilder);
 
             messageId = messageBuilder.send();
             return messageId;
@@ -256,8 +246,7 @@ public final class PulsarTemplate {
                 messageBuilder.key(key);
             }
 
-            // Inject trace context into message headers
-            injectTraceContext(messageBuilder);
+            applyBeforeHandleSendMessageInterceptors(messageBuilder);
 
             messageId = messageBuilder.send();
             return messageId;
@@ -299,8 +288,7 @@ public final class PulsarTemplate {
                 messageBuilder.key(key);
             }
 
-            // Inject trace context into message headers
-            injectTraceContext(messageBuilder);
+            applyBeforeHandleSendMessageInterceptors(messageBuilder);
 
             return messageBuilder.sendAsync()
                     .whenComplete((messageId, exception) -> {
@@ -650,6 +638,21 @@ public final class PulsarTemplate {
         return currentMessage;
     }
 
+    private void applyBeforeHandleSendMessageInterceptors(TypedMessageBuilder<byte[]> messageBuilder) {
+        if (interceptorRegistry == null) {
+            return;
+        }
+
+        for (PulsarMessageInterceptor interceptor : interceptorRegistry.interceptors()) {
+            try {
+                interceptor.beforeHandleSendMessage(messageBuilder);
+            } catch (Exception e) {
+                // Interceptor exceptions should not affect message sending, just log them
+                logger.error("Error in beforeSend interceptor: " + e.getMessage(), e);
+            }
+        }
+    }
+
     /**
      * Execute after-send interceptors
      */
@@ -741,38 +744,4 @@ public final class PulsarTemplate {
         logger.info("Pulsar dead letter consumer closed");
     }
 
-    /**
-     * Inject trace context into message headers
-     */
-    private void injectTraceContext(TypedMessageBuilder<byte[]> messageBuilder) {
-        try {
-            // Inject trace information
-            if (tracer != null) {
-                Optional<TraceContext> ctxOpt = Optional.ofNullable(tracer.currentSpan()).map(Span::context);
-                if (ctxOpt.isPresent()) {
-                    PulsarMessageHeadersPropagator.injectTraceContext(messageBuilder,
-                            ctxOpt.get().parentId(), ctxOpt.get().traceId(), ctxOpt.get().spanId(), ctxOpt.get().sampled());
-                } else {
-                    PulsarMessageHeadersPropagator.injectTraceContext(messageBuilder, MDC.getCopyOfContextMap());
-                }
-            }
-
-            // Inject multi-tenant information
-            boolean multiTenant = MsgContext.isMultiTenant();
-            if (multiTenant) {
-                String corpKey = MsgContext.getCorpKey();
-                String appName = MsgContext.getAppName();
-                LocalDateTime time = MsgContext.getTime();
-                String msgId = UUID.randomUUID().toString().replaceAll("-", "").toLowerCase(Locale.ROOT);
-                PulsarMessageHeadersPropagator.injectCorp(messageBuilder, corpKey, appName, time, msgId);
-            }
-            // Inject routing information
-            boolean multiRoute = MsgContext.isMultiRoute();
-            if (multiRoute) {
-                PulsarMessageHeadersPropagator.injectMsgRoute(messageBuilder, MsgContext.getMsgRoute());
-            }
-        } catch (Exception e) {
-            logger.warn("Failed to inject trace context into message", e);
-        }
-    }
 }

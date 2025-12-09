@@ -78,7 +78,7 @@ public @interface PulsarListener {
      * some meta information of the message. The message itself will be in the
      * dataKey field, only need to parse the field specified by dataKey when parsing
      */
-    String dataKey() default "data";
+    String dataKey() default "";
 
     /**
      * Consumer name

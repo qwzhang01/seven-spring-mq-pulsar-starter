@@ -26,18 +26,26 @@ package com.github.spring.mq.pulsar.interceptor;
 
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
+import org.apache.pulsar.client.api.TypedMessageBuilder;
 
 /**
  * Pulsar message interceptor interface
  *
- * <p>This interface allows intercepting and processing messages during the send and receive process.
- * Interceptors can be used for various purposes such as:
+ * <p>Provides interception points for Pulsar message processing lifecycle:
  * <ul>
- *   <li>Message transformation and validation</li>
- *   <li>Logging and monitoring</li>
- *   <li>Security and authentication</li>
- *   <li>Message filtering and routing</li>
- *   <li>Error handling and retry logic</li>
+ *   <li>Message sending preparation</li>
+ *   <li>Pre-send interception</li>
+ *   <li>Post-send notification</li>
+ *   <li>Pre-receive interception</li>
+ *   <li>Post-receive processing</li>
+ * </ul>
+ *
+ * <p>Implementations can use these interception points to:
+ * <ul>
+ *   <li>Enrich messages with metadata</li>
+ *   <li>Propagate tracing context</li>
+ *   <li>Handle tenant isolation</li>
+ *   <li>Implement custom error handling</li>
  * </ul>
  *
  * <p>Interceptors are executed in order based on their priority (lower values = higher priority).
@@ -68,6 +76,26 @@ public interface PulsarMessageInterceptor {
      * @param exception Send exception (if any)
      */
     default void afterSend(String topic, Object message, MessageId messageId, Throwable exception) {
+        // Default empty implementation
+    }
+
+    /**
+     * Intercept message builder before sending
+     *
+     * <p>This method is called during message preparation phase, allowing
+     * implementations to modify the message builder before the message
+     * is finalized and sent.
+     *
+     * <p>Typical use cases include:
+     * <ul>
+     *   <li>Adding custom message properties</li>
+     *   <li>Injecting tracing context headers</li>
+     *   <li>Setting message delivery semantics</li>
+     * </ul>
+     *
+     * @param messageBuilder the message builder being prepared
+     */
+    default void beforeHandleSendMessage(TypedMessageBuilder<byte[]> messageBuilder) {
         // Default empty implementation
     }
 

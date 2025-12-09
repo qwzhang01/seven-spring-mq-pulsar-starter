@@ -25,160 +25,84 @@
 package com.github.spring.mq.pulsar.interceptor;
 
 import com.github.spring.mq.pulsar.domain.MsgContext;
-import com.github.spring.mq.pulsar.domain.MsgMetaKey;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.TraceContext;
 import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.propagation.Propagator;
 import org.apache.pulsar.client.api.Message;
-import org.apache.pulsar.client.api.MessageId;
+import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 import java.util.Map;
 
 /**
- * Tracing interceptor for Pulsar messages
+ * Tracing interceptor for Pulsar messages that integrates with Micrometer Tracing
  *
- * <p>This interceptor integrates with Micrometer Tracing to provide distributed tracing
- * capabilities for Pulsar message processing. It handles the complete lifecycle of
- * trace context propagation across message boundaries:
+ * <p>This interceptor handles distributed tracing context propagation through Pulsar messages.
+ * It creates and manages spans for message sending and receiving operations.
+ *
+ * <p>Key features:
  * <ul>
- *   <li>Creates spans for message send/receive operations</li>
- *   <li>Extracts trace context from incoming message headers</li>
- *   <li>Injects trace context into outgoing message headers</li>
- *   <li>Propagates traceId and spanId through thread-local context</li>
- *   <li>Sets up MDC (Mapped Diagnostic Context) for structured logging</li>
- *   <li>Handles span lifecycle management and resource cleanup</li>
+ *   <li>Automatic context propagation via message properties</li>
+ *   <li>Span creation for message production and consumption</li>
+ *   <li>Integration with Micrometer Tracing API</li>
  * </ul>
- *
- * <p>The interceptor follows OpenTelemetry semantic conventions for messaging systems
- * and ensures proper trace continuity across distributed message flows.
- *
- * @author avinzhang
- * @since 1.2.16
  */
 public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(TracingPulsarMessageInterceptor.class);
 
     private final Tracer tracer;
+    private final Propagator propagator;
 
     /**
-     * Constructs a new tracing interceptor with the provided tracer
+     * Constructs a new tracing interceptor with the provided tracer and propagator
      *
-     * @param tracer the Micrometer tracer instance for creating and managing spans
+     * @param tracer the Micrometer tracer instance for span management
+     * @param propagator the propagator for context injection and extraction
      */
-    public TracingPulsarMessageInterceptor(Tracer tracer) {
+    public TracingPulsarMessageInterceptor(Tracer tracer, Propagator propagator) {
         this.tracer = tracer;
+        this.propagator = propagator;
     }
 
     /**
-     * Intercepts message sending to create a producer span and set up trace context
+     * Injects tracing context into message properties before sending
      *
-     * <p>This method is called before a message is sent to Pulsar. It:
-     * <ul>
-     *   <li>Creates a new span representing the message send operation</li>
-     *   <li>Tags the span with messaging system metadata</li>
-     *   <li>Stores trace information in thread-local context for header injection</li>
-     *   <li>Sets up MDC for logging correlation</li>
-     * </ul>
+     * <p>This method is called during message sending to propagate the current
+     * trace context through message properties.
      *
-     * @param topic   the destination topic name
-     * @param message the message object being sent
-     * @return the original message object (unchanged)
+     * @param messageBuilder the Pulsar message builder being prepared
      */
     @Override
-    public Object beforeSend(String topic, Object message) {
-        if (tracer == null) {
-            return message;
-        }
-
-        try {
-            // Create a new span for message sending operation
-            // This span represents the producer side of the message flow
-            Span span = tracer.nextSpan()
-                    .name("pulsar.send")
-                    .tag("messaging.system", "pulsar")
-                    .tag("messaging.destination", topic)
-                    .tag("messaging.operation", "send")
-                    .start();
-
-            TraceContext traceContext = span.context();
-
-            // Store trace information in thread-local context for later injection into message headers
-            MsgContext.setTraceId(traceContext.traceId());
-            MsgContext.setSpanId(traceContext.spanId());
-
-            // Set MDC (Mapped Diagnostic Context) for structured logging
-            MDC.put("traceId", traceContext.traceId());
-            MDC.put("spanId", traceContext.spanId());
-
-            logger.debug("Starting message send span - traceId: {}, spanId: {}, topic: {}",
-                    traceContext.traceId(), traceContext.spanId(), topic);
-
-            return message;
-        } catch (Exception e) {
-            logger.warn("Failed to create tracing span for message send", e);
-            return message;
-        }
-    }
-
-    /**
-     * Completes the message send span and performs cleanup
-     *
-     * <p>This method is called after a message send operation completes (successfully or with error).
-     * It finalizes the span with appropriate tags and events, then cleans up the trace context.
-     *
-     * @param topic     the destination topic name
-     * @param message   the message object that was sent
-     * @param messageId the Pulsar message ID (null if send failed)
-     * @param exception any exception that occurred during sending (null if successful)
-     */
-    @Override
-    public void afterSend(String topic, Object message, MessageId messageId, Throwable exception) {
+    public void beforeHandleSendMessage(TypedMessageBuilder<byte[]> messageBuilder) {
         if (tracer == null) {
             return;
         }
-
-        try {
-            Span currentSpan = tracer.currentSpan();
-            if (currentSpan != null) {
-                // Tag span with outcome and relevant metadata
-                if (exception != null) {
-                    currentSpan.tag("error", exception.getMessage());
-                    currentSpan.event("send.error");
-                } else {
-                    currentSpan.tag("messaging.message_id", messageId != null ? messageId.toString() : "unknown");
-                    currentSpan.event("send.success");
-                }
-                currentSpan.end();
-
-                logger.debug("Ended message send span - topic: {}, messageId: {}, error: {}",
-                        topic, messageId, exception != null ? exception.getMessage() : "none");
-            }
-        } catch (Exception e) {
-            logger.warn("Failed to end tracing span for message send", e);
-        } finally {
-            // Clean up MDC to prevent memory leaks in thread pools
-            MDC.remove("traceId");
-            MDC.remove("spanId");
+        TraceContext ctx = tracer.currentTraceContext().context();
+        if (ctx == null) {
+            return;
         }
+        propagator.inject(ctx, messageBuilder, (builder, key, value) -> {
+            if (builder != null) {
+                builder.property(key, value);
+            }
+        });
     }
 
     /**
-     * Intercepts message receiving to extract trace context and create a consumer span
+     * Extracts tracing context from received message and starts consumer span
      *
-     * <p>This method is called before a message is processed by a consumer. It:
+     * <p>This method:
      * <ul>
-     *   <li>Extracts trace context from message headers</li>
-     *   <li>Creates a child span for the message receive operation</li>
-     *   <li>Sets up thread-local context and MDC for the processing thread</li>
-     *   <li>Enables trace continuity across the message boundary</li>
+     *   <li>Extracts trace context from message properties</li>
+     *   <li>Creates a new span for message consumption</li>
+     *   <li>Sets up tracing context in thread-local storage</li>
      * </ul>
      *
      * @param message the received Pulsar message
-     * @return true to continue processing, false to skip (always returns true)
+     * @return true if tracing context was successfully set up, false otherwise
      */
     @Override
     public boolean beforeReceive(Message<?> message) {
@@ -187,31 +111,14 @@ public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor
         }
 
         try {
-            // Extract trace context from message properties using standard headers
             Map<String, String> properties = message.getProperties();
-            Span start = tracer.spanBuilder().setParent(new TraceContext() {
-                @Override
-                public String traceId() {
-                    return properties.get(MsgMetaKey.TRACER_TRACE_ID.getCode());
-                }
+            TraceContext context = tracer.currentTraceContext().context();
+            Span consumeSpan = propagator.extract(context, (traceContext, key) -> properties.get(key))
+                    .name("consume-pulsar-message")
+                    .start();
 
-                @Override
-                public String parentId() {
-                    return properties.get(MsgMetaKey.TRACER_PARENT_ID.getCode());
-                }
-
-                @Override
-                public String spanId() {
-                    return properties.get(MsgMetaKey.TRACER_SPAN_ID.getCode());
-                }
-
-                @Override
-                public Boolean sampled() {
-                    return Boolean.valueOf(properties.get(MsgMetaKey.TRACER_SAMPLED.getCode()));
-                }
-            }).start();
-
-            tracer.withSpan(start);
+            Tracer.SpanInScope spanInScope = tracer.withSpan(consumeSpan);
+            MsgContext.setSpanInScope(spanInScope);
             return true;
         } catch (Exception e) {
             logger.warn("Failed to create tracing span for message receive", e);
@@ -220,59 +127,41 @@ public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor
     }
 
     /**
-     * Completes the message receive span and performs cleanup
+     * Cleans up tracing context after message processing
      *
-     * <p>This method is called after message processing completes. It finalizes the
-     * consumer span with appropriate outcome information and cleans up all trace context
-     * to prevent memory leaks and context pollution.
+     * <p>This method:
+     * <ul>
+     *   <li>Closes the current span scope</li>
+     *   <li>Removes thread-local tracing context</li>
+     *   <li>Logs completion of message processing</li>
+     * </ul>
      *
-     * @param message          the original Pulsar message
-     * @param processedMessage the processed message object (may be null)
-     * @param exception        any exception that occurred during processing (null if successful)
+     * @param message the received Pulsar message
+     * @param processedMessage the processed message object
+     * @param exception any exception that occurred during processing
      */
     @Override
     public void afterReceive(Message<?> message, Object processedMessage, Exception exception) {
         if (tracer == null) {
             return;
         }
-
-        try {
-            Span currentSpan = tracer.currentSpan();
-            if (currentSpan != null) {
-                // Tag span with processing outcome
-                if (exception != null) {
-                    currentSpan.tag("error", exception.getMessage());
-                    currentSpan.event("receive.error");
-                } else {
-                    currentSpan.event("receive.success");
-                }
-                currentSpan.end();
-
-                logger.debug("Ended message receive span - topic: {}, messageId: {}, error: {}",
-                        message.getTopicName(), message.getMessageId(),
-                        exception != null ? exception.getMessage() : "none");
-            }
+        try (Tracer.SpanInScope spanInScope = MsgContext.getSpanInScope()) {
+            logger.debug("Finished processing messageId: {}", message.getMessageId());
         } catch (Exception e) {
             logger.warn("Failed to end tracing span for message receive", e);
         } finally {
             // Clean up all trace context to prevent memory leaks and context pollution
-            MDC.remove("traceId");
-            MDC.remove("spanId");
             MsgContext.remove();
         }
     }
 
-
     /**
      * Returns the execution order of this interceptor
      *
-     * <p>This interceptor has high priority (low order value) to ensure that
-     * tracing context is established before other interceptors execute.
-     *
-     * @return -1000 to ensure high priority execution
+     * @return the order value (lower numbers execute first)
      */
     @Override
     public int getOrder() {
-        return -1000; // High priority to ensure tracing is set up first
+        return -1000;
     }
 }

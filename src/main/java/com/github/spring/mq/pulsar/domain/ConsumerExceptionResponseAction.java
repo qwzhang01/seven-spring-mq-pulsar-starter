@@ -26,7 +26,7 @@ package com.github.spring.mq.pulsar.domain;
 
 /**
  * Response action after message consumption exception
- * 
+ *
  * <p>Defines how to handle messages when consumption fails:
  * <ul>
  *   <li>ACK: Acknowledge the message (mark as successfully processed)</li>

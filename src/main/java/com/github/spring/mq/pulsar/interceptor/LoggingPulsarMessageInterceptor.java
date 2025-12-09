@@ -26,6 +26,7 @@ package com.github.spring.mq.pulsar.interceptor;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.spring.mq.pulsar.exception.JacksonException;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.slf4j.Logger;
@@ -62,7 +63,7 @@ public class LoggingPulsarMessageInterceptor implements PulsarMessageInterceptor
         try {
             logMsg = message instanceof String ? (String) message : objectMapper.writeValueAsString(message);
         } catch (JsonProcessingException e) {
-            throw new com.github.spring.mq.pulsar.exception.JacksonException("", e);
+            throw new JacksonException("", e);
         }
         logger.info("Preparing to send message to topic: {}, message content: {}", topic, logMsg);
         // Message preprocessing can be done here

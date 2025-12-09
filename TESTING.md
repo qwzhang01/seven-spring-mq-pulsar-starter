@@ -7,6 +7,7 @@
 我们的测试套件包含以下几个层次的测试：
 
 ### 1. 单元测试 (Unit Tests)
+
 - **配置测试**: 验证自动配置和属性绑定
 - **核心功能测试**: 测试 PulsarTemplate 和消息发送功能
 - **注解处理测试**: 验证 @PulsarListener 注解处理
@@ -15,6 +16,7 @@
 - **健康检查测试**: 测试健康指示器
 
 ### 2. 集成测试 (Integration Tests)
+
 - **端到端消息传递**: 完整的发送和接收流程
 - **多消息处理**: 批量消息处理能力
 - **异步消息处理**: 异步发送和接收
@@ -22,6 +24,7 @@
 - **JSON序列化**: 复杂对象的序列化和反序列化
 
 ### 3. 性能测试 (Performance Tests)
+
 - **高并发发送**: 大量消息的同步发送性能
 - **异步发送性能**: 异步消息发送的吞吐量
 - **多线程并发**: 多线程环境下的性能表现
@@ -39,6 +42,7 @@
 ### 运行完整测试套件
 
 #### Linux/macOS
+
 ```bash
 # 运行完整测试套件（包括性能测试）
 ./run-tests.sh
@@ -48,6 +52,7 @@
 ```
 
 #### Windows
+
 ```cmd
 # 运行完整测试套件
 run-tests.bat
@@ -59,21 +64,25 @@ run-tests.bat --skip-performance
 ### 分别运行不同类型的测试
 
 #### 只运行单元测试
+
 ```bash
 mvn test -Dtest="!**/*IntegrationTest,!**/*PerformanceTest"
 ```
 
 #### 只运行集成测试
+
 ```bash
 mvn test -Dtest="**/*IntegrationTest"
 ```
 
 #### 只运行性能测试
+
 ```bash
 mvn test -Dtest="**/*PerformanceTest"
 ```
 
 #### 运行特定测试类
+
 ```bash
 mvn test -Dtest="PulsarTemplateTest"
 ```
@@ -105,6 +114,7 @@ spring:
 集成测试使用 Testcontainers 自动启动 Pulsar 实例：
 
 ```java
+
 @Testcontainers
 class PulsarIntegrationTest {
     @Container
@@ -118,14 +128,17 @@ class PulsarIntegrationTest {
 运行测试后，可以查看以下报告：
 
 ### 1. 测试结果报告
+
 - **位置**: `target/site/surefire-report.html`
 - **内容**: 详细的测试执行结果，包括通过/失败的测试
 
 ### 2. 代码覆盖率报告
+
 - **位置**: `target/site/jacoco/index.html`
 - **内容**: 代码覆盖率统计，包括行覆盖率、分支覆盖率等
 
 ### 3. 静态分析报告
+
 - **位置**: `target/site/spotbugs.html`
 - **内容**: 代码质量分析，潜在的bug和代码异味
 
@@ -161,12 +174,12 @@ act
 
 以下是在标准开发环境中的预期性能基准：
 
-| 测试场景 | 最低要求 | 推荐性能 |
-|---------|---------|---------|
-| 同步发送 | 10 msg/s | 100+ msg/s |
-| 异步发送 | 50 msg/s | 500+ msg/s |
-| 并发发送 | 5 msg/s | 50+ msg/s |
-| 大消息处理 | 0.1 MB/s | 1+ MB/s |
+| 测试场景  | 最低要求     | 推荐性能       |
+|-------|----------|------------|
+| 同步发送  | 10 msg/s | 100+ msg/s |
+| 异步发送  | 50 msg/s | 500+ msg/s |
+| 并发发送  | 5 msg/s  | 50+ msg/s  |
+| 大消息处理 | 0.1 MB/s | 1+ MB/s    |
 
 ### 性能调优建议
 
@@ -180,36 +193,47 @@ act
 ### 常见问题
 
 #### 1. Docker 相关问题
+
 ```
 Error: Could not start Pulsar container
 ```
+
 **解决方案**: 确保 Docker 正在运行，并且有足够的内存分配给 Docker
 
 #### 2. 端口冲突
+
 ```
 Error: Port 6650 is already in use
 ```
+
 **解决方案**: 停止其他使用 6650 端口的服务，或修改测试配置使用不同端口
 
 #### 3. 内存不足
+
 ```
 OutOfMemoryError during performance tests
 ```
+
 **解决方案**: 增加 JVM 内存设置：
+
 ```bash
 export MAVEN_OPTS="-Xmx2g -XX:MaxMetaspaceSize=512m"
 ```
 
 #### 4. 网络超时
+
 ```
 TimeoutException: Message send timeout
 ```
+
 **解决方案**: 增加超时设置或检查网络连接
 
 ### 调试技巧
 
 #### 1. 启用详细日志
+
 在 `application-test.yml` 中添加：
+
 ```yaml
 logging:
   level:
@@ -218,11 +242,13 @@ logging:
 ```
 
 #### 2. 单独运行失败的测试
+
 ```bash
 mvn test -Dtest="FailingTestClass#failingTestMethod"
 ```
 
 #### 3. 跳过特定测试
+
 ```bash
 mvn test -Dtest="!ProblematicTest"
 ```

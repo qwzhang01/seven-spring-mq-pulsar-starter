@@ -530,6 +530,7 @@ spring:
 #### 基础消息发送
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -586,6 +587,7 @@ public class MultiProducerService {
 #### 业务场景示例
 
 ```java
+
 @Service
 public class OrderService {
 
@@ -766,6 +768,7 @@ public interface PulsarMessageInterceptor {
 #### 日志拦截器
 
 ```java
+
 @Component
 public class LoggingInterceptor implements PulsarMessageInterceptor {
 
@@ -802,6 +805,7 @@ public class LoggingInterceptor implements PulsarMessageInterceptor {
 #### 消息审计拦截器
 
 ```java
+
 @Component
 public class MessageAuditInterceptor implements PulsarMessageInterceptor {
 
@@ -843,6 +847,7 @@ public class MessageAuditInterceptor implements PulsarMessageInterceptor {
 #### 性能监控拦截器
 
 ```java
+
 @Component
 public class PerformanceInterceptor implements PulsarMessageInterceptor {
     private final ThreadLocal<Long> startTime = new ThreadLocal<>();
@@ -913,6 +918,7 @@ public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
 #### 基于注解（推荐）
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -938,6 +944,7 @@ public class MessageService {
 #### 编程式事务
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -1100,6 +1107,7 @@ logging:
 Starter 提供内置的健康检查功能：
 
 ```java
+
 @Autowired
 private PulsarHealthIndicator healthIndicator;
 
@@ -1112,6 +1120,7 @@ public void checkHealth() {
 ### 健康检查集成
 
 ```java
+
 @RestController
 @RequestMapping("/health")
 public class HealthController {

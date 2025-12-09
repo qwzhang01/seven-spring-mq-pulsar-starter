@@ -6,7 +6,8 @@ A feature-rich, easy-to-use Spring Boot Pulsar Starter that provides a complete 
 
 - 🚀 **Easy to Use**: Enable Pulsar functionality with a single `@EnablePulsar` annotation
 - 🔧 **Flexible Configuration**: Support flexible control of various functions through configuration files
-- 📨 **Message Sending**: Provide synchronous/asynchronous message sending, support delayed messages and transactional messages
+- 📨 **Message Sending**: Provide synchronous/asynchronous message sending, support delayed messages and transactional
+  messages
 - 👂 **Message Listening**: Easily create message listeners through `@PulsarListener` annotation
 - 🔄 **Retry Mechanism**: Built-in message processing failure retry mechanism with exponential backoff support
 - 💀 **Dead Letter Queue**: Automatically handle retry-failed messages to dead letter queue
@@ -530,6 +531,7 @@ spring:
 #### Basic Message Sending
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -586,6 +588,7 @@ public class MultiProducerService {
 #### Business Scenario Examples
 
 ```java
+
 @Service
 public class OrderService {
 
@@ -766,6 +769,7 @@ public interface PulsarMessageInterceptor {
 #### Logging Interceptor
 
 ```java
+
 @Component
 public class LoggingInterceptor implements PulsarMessageInterceptor {
 
@@ -802,6 +806,7 @@ public class LoggingInterceptor implements PulsarMessageInterceptor {
 #### Message Audit Interceptor
 
 ```java
+
 @Component
 public class MessageAuditInterceptor implements PulsarMessageInterceptor {
 
@@ -843,6 +848,7 @@ public class MessageAuditInterceptor implements PulsarMessageInterceptor {
 #### Performance Monitoring Interceptor
 
 ```java
+
 @Component
 public class PerformanceInterceptor implements PulsarMessageInterceptor {
     private final ThreadLocal<Long> startTime = new ThreadLocal<>();
@@ -913,6 +919,7 @@ public class CustomDeadLetterHandler implements DeadLetterQueueHandler {
 #### Annotation-based (Recommended)
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -938,6 +945,7 @@ public class MessageService {
 #### Programmatic Transaction
 
 ```java
+
 @Service
 public class MessageService {
 
@@ -1100,6 +1108,7 @@ logging:
 The starter provides built-in health check functionality:
 
 ```java
+
 @Autowired
 private PulsarHealthIndicator healthIndicator;
 
@@ -1112,6 +1121,7 @@ public void checkHealth() {
 ### Health Check Integration
 
 ```java
+
 @RestController
 @RequestMapping("/health")
 public class HealthController {
@@ -1221,7 +1231,8 @@ public class HighThroughputService {
 3. **Message Loss**: Check if message acknowledgment mechanism is correctly implemented
 4. **Performance Issues**: Adjust batching, connection pool and other configuration parameters
 5. **Transaction Timeout**: Check `transaction.timeout` configuration, optimize business logic execution time
-6. **Transaction Coordinator Unavailable**: Check Pulsar cluster configuration, confirm transaction coordinator service is running normally
+6. **Transaction Coordinator Unavailable**: Check Pulsar cluster configuration, confirm transaction coordinator service
+   is running normally
 
 ### Logging Configuration
 
@@ -1250,7 +1261,8 @@ public void debugTransaction() {
 
 1. **Pulsar Version Requirements**: Ensure using Pulsar version that supports transactions (2.7.0+)
 2. **Cluster Configuration**: Pulsar cluster needs to enable transaction coordinator
-3. **Performance Impact**: Transactions and interceptors will bring certain performance overhead, please weigh usage according to business needs
+3. **Performance Impact**: Transactions and interceptors will bring certain performance overhead, please weigh usage
+   according to business needs
 4. **Error Recovery**: Properly handle transaction failures and retry logic
 5. **Resource Management**: Release transaction resources in time to avoid resource leaks
 

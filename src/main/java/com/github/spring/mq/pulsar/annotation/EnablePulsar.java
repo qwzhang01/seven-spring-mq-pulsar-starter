@@ -89,7 +89,7 @@ public @interface EnablePulsar {
     /**
      * Whether to enable default logging interceptor
      */
-    boolean enableLogInterceptor() default false;
+    boolean enableLogInterceptor() default true;
 
     /**
      * Whether to enable default performance interceptor

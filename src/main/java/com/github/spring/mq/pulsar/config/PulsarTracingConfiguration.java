@@ -30,7 +30,7 @@ import com.github.spring.mq.pulsar.tracing.ConsumeExceptionHandlerContainer;
 import com.github.spring.mq.pulsar.tracing.ConsumeExceptionHandlerContainerFactory;
 import com.github.spring.mq.pulsar.tracing.ConsumerAdviceAnnotationBeanPostProcessor;
 import io.micrometer.tracing.Tracer;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import io.micrometer.tracing.propagation.Propagator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -64,9 +64,8 @@ public class PulsarTracingConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnBean(Tracer.class)
-    public TracingPulsarMessageInterceptor tracingPulsarMessageInterceptor(Tracer tracer) {
-        return new TracingPulsarMessageInterceptor(tracer);
+    public TracingPulsarMessageInterceptor tracingPulsarMessageInterceptor(Tracer tracer, Propagator propagato) {
+        return new TracingPulsarMessageInterceptor(tracer,propagato);
     }
 
     @Bean

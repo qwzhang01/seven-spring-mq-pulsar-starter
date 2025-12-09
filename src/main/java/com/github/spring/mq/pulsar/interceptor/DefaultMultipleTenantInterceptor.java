@@ -25,16 +25,10 @@
 package com.github.spring.mq.pulsar.interceptor;
 
 import com.github.spring.mq.pulsar.domain.MsgContext;
-import com.github.spring.mq.pulsar.domain.MsgDomain;
 import com.github.spring.mq.pulsar.domain.MsgMetaKey;
 import org.apache.pulsar.client.api.Message;
-import org.apache.pulsar.client.api.MessageId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 /**
  * Default multi-tenant interceptor
@@ -53,7 +47,6 @@ import java.util.Map;
  *
  * <p>Features:
  * <ul>
- *   <li>Automatic message wrapping with {@link MsgDomain}</li>
  *   <li>Tenant context propagation</li>
  *   <li>Request tracing support</li>
  *   <li>Thread-local context management</li>
@@ -76,33 +69,15 @@ public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageI
     @Override
     public Object beforeSend(String topic, Object message) {
         buildSendContext();
-        MsgContext.setMultiTenant(true);
         return message;
     }
 
     @Override
-    public void afterSend(String topic, Object message, MessageId messageId, Throwable exception) {
-        MsgContext.remove();
-    }
-
-    @Override
     public boolean beforeReceive(Message<?> message) {
-        Map<String, String> properties = message.getProperties();
-        String corpKey = properties.get(MsgMetaKey.CORP.getCode());
-        String appName = properties.get(MsgMetaKey.APP.getCode());
-        String time = properties.get(MsgMetaKey.TIME.getCode());
-
-        MsgContext.setCorpKey(corpKey);
-        MsgContext.setAppName(appName);
-        MsgContext.setTime(LocalDateTime.parse(time, DateTimeFormatter.ofPattern(DATE_TIME_FORMAT)));
-
+        String corpKey = message.getProperties().get(MsgMetaKey.CORP.getCode());
         return buildReceiveContext(corpKey);
     }
 
-    @Override
-    public void afterReceive(Message<?> message, Object processedMessage, Exception exception) {
-        MsgContext.remove();
-    }
 
     @Override
     public int getOrder() {

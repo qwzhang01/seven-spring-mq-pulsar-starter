@@ -24,6 +24,8 @@
 
 package com.github.spring.mq.pulsar.domain;
 
+import io.micrometer.tracing.Tracer;
+
 import java.time.LocalDateTime;
 
 /**
@@ -68,23 +70,6 @@ public class MsgContext {
         context.setTime(time);
     }
 
-    public static String getAppName() {
-        Context context = HOLDER.get();
-        if (context == null) {
-            return null;
-        }
-        return context.getAppName();
-    }
-
-    public static void setAppName(String appName) {
-        Context context = HOLDER.get();
-        if (context == null) {
-            context = new Context();
-            HOLDER.set(context);
-        }
-        context.setAppName(appName);
-    }
-
     public static String getCorpKey() {
         Context context = HOLDER.get();
         if (context == null) {
@@ -100,14 +85,6 @@ public class MsgContext {
             HOLDER.set(context);
         }
         context.setCorpKey(corpKey);
-    }
-
-    public static boolean isMultiRoute() {
-        Context context = HOLDER.get();
-        if (context == null) {
-            return false;
-        }
-        return context.isMultiRoute();
     }
 
     public static void setMultiRoute(boolean multiRoute) {
@@ -136,63 +113,28 @@ public class MsgContext {
         context.setMsgRoute(businessPath);
     }
 
-    public static String getTraceId() {
+    public static Tracer.SpanInScope getSpanInScope() {
         Context context = HOLDER.get();
         if (context == null) {
             return null;
         }
-        return context.getTraceId();
+        return context.getSpanInScope();
     }
 
-    public static void setTraceId(String traceId) {
+    public static void setSpanInScope(Tracer.SpanInScope spanInScope) {
         Context context = HOLDER.get();
         if (context == null) {
             context = new Context();
             HOLDER.set(context);
         }
-        context.setTraceId(traceId);
-    }
-
-    public static String getSpanId() {
-        Context context = HOLDER.get();
-        if (context == null) {
-            return null;
-        }
-        return context.getSpanId();
-    }
-
-    public static void setSpanId(String spanId) {
-        Context context = HOLDER.get();
-        if (context == null) {
-            context = new Context();
-            HOLDER.set(context);
-        }
-        context.setSpanId(spanId);
-    }
-
-    public static boolean isMultiTenant() {
-        Context context = HOLDER.get();
-        if (context == null) {
-            return false;
-        }
-        return context.isMultiTenant();
-    }
-
-    public static void setMultiTenant(boolean isMultiTenant) {
-        Context context = HOLDER.get();
-        if (context == null) {
-            context = new Context();
-            HOLDER.set(context);
-        }
-        context.setMultiTenant(isMultiTenant);
+        context.setSpanInScope(spanInScope);
     }
 
     public static void remove() {
         HOLDER.remove();
     }
 
-    private static class Context {
-        private boolean isMultiTenant;
+    public static class Context {
         private String corpKey;
         private String appName;
         private LocalDateTime time;
@@ -202,8 +144,7 @@ public class MsgContext {
         private boolean isMultiRoute;
         private String msgRoute;
 
-        private String traceId;
-        private String spanId;
+        private Tracer.SpanInScope spanInScope;
 
         public boolean isMultiRoute() {
             return isMultiRoute;
@@ -211,30 +152,6 @@ public class MsgContext {
 
         public void setMultiRoute(boolean multiRoute) {
             isMultiRoute = multiRoute;
-        }
-
-        public String getSpanId() {
-            return spanId;
-        }
-
-        public void setSpanId(String spanId) {
-            this.spanId = spanId;
-        }
-
-        public String getTraceId() {
-            return traceId;
-        }
-
-        public void setTraceId(String traceId) {
-            this.traceId = traceId;
-        }
-
-        public boolean isMultiTenant() {
-            return isMultiTenant;
-        }
-
-        public void setMultiTenant(boolean multiTenant) {
-            isMultiTenant = multiTenant;
         }
 
         public String getAppName() {
@@ -267,6 +184,14 @@ public class MsgContext {
 
         public void setMsgRoute(String msgRoute) {
             this.msgRoute = msgRoute;
+        }
+
+        public Tracer.SpanInScope getSpanInScope() {
+            return spanInScope;
+        }
+
+        public void setSpanInScope(Tracer.SpanInScope spanInScope) {
+            this.spanInScope = spanInScope;
         }
     }
 }

@@ -26,7 +26,12 @@ package com.github.spring.mq.pulsar.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -42,6 +47,7 @@ import com.github.spring.mq.pulsar.exception.PulsarClientInitException;
 import com.github.spring.mq.pulsar.listener.DeadLetterMessageProcessor;
 import com.github.spring.mq.pulsar.listener.PulsarListenerAnnotationBeanPostProcessor;
 import com.github.spring.mq.pulsar.listener.PulsarListenerContainerFactory;
+import io.micrometer.tracing.Tracer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.pulsar.client.api.ClientBuilder;
@@ -147,11 +153,12 @@ public class PulsarAutoConfiguration {
      */
     @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean
-    public PulsarTemplate pulsarTemplate(PulsarClient pulsarClient, ObjectMapper objectMapper,
+    public PulsarTemplate pulsarTemplate(PulsarClient pulsarClient,
+                                         ObjectMapper objectMapper,
                                          PulsarInterceptorConfiguration.PulsarInterceptorRegistry interceptorRegistry,
-                                         DeadLetterMessageProcessor deadLetterMessageProcessor) {
-        PulsarTemplate template = new PulsarTemplate(pulsarClient, pulsarProperties,
-                objectMapper, deadLetterMessageProcessor);
+                                         DeadLetterMessageProcessor deadLetterMessageProcessor,
+                                         Tracer tracer) {
+        PulsarTemplate template = new PulsarTemplate(pulsarClient, pulsarProperties, objectMapper, deadLetterMessageProcessor, tracer);
         template.setInterceptorRegistry(interceptorRegistry);
         return template;
     }

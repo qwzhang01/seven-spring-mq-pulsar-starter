@@ -24,12 +24,6 @@
 
 package com.github.spring.mq.pulsar.interceptor;
 
-import com.github.spring.mq.pulsar.domain.MsgContext;
-import com.github.spring.mq.pulsar.domain.MsgMetaKey;
-import org.apache.pulsar.client.api.Message;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Default multi-tenant interceptor
  *
@@ -61,46 +55,15 @@ import org.slf4j.LoggerFactory;
  * @author avinzhang
  * @since 1.0.0
  */
-public abstract class DefaultMultipleTenantInterceptor implements PulsarMessageInterceptor {
-
-    private final static Logger logger = LoggerFactory.getLogger(DefaultMultipleTenantInterceptor.class);
-    private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+public class DefaultMetaMessageInterceptor extends MetaMessageInterceptor {
 
     @Override
-    public Object beforeSend(String topic, Object message) {
-        buildSendContext();
-        return message;
+    public void buildSendContext() {
+
     }
 
     @Override
-    public boolean beforeReceive(Message<?> message) {
-        String corpKey = message.getProperties().get(MsgMetaKey.CORP.getCode());
-        return buildReceiveContext(corpKey);
+    public boolean buildReceiveContext(String corpKey) {
+        return true;
     }
-
-
-    @Override
-    public int getOrder() {
-        // Highest priority to ensure proper context setup
-        return 10;
-    }
-
-    /**
-     * Build request context before sending message
-     *
-     * <p>Implementations should set up the necessary context information
-     * in {@link MsgContext} before message sending.
-     */
-    public abstract void buildSendContext();
-
-    /**
-     * Handle multi-tenant context switching after receiving message
-     *
-     * <p>Implementations should handle tenant switching based on the
-     * corporation key extracted from the message.
-     *
-     * @param corpKey Corporation key for tenant identification
-     * @return true if context switching is successful, false otherwise
-     */
-    public abstract boolean buildReceiveContext(String corpKey);
 }

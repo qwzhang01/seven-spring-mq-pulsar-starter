@@ -55,6 +55,27 @@ import org.apache.pulsar.client.api.TypedMessageBuilder;
  * @since 1.0.0
  */
 public interface PulsarMessageInterceptor {
+    /**
+     * Intercept message builder
+     * <p>
+     * 构建消息的时候拦截，补偿消息构建逻辑
+     *
+     * <p>This method is called during message preparation phase, allowing
+     * implementations to modify the message builder before the message
+     * is finalized and sent.
+     *
+     * <p>Typical use cases include:
+     * <ul>
+     *   <li>Adding custom message properties</li>
+     *   <li>Injecting tracing context headers</li>
+     *   <li>Setting message delivery semantics</li>
+     * </ul>
+     *
+     * @param messageBuilder the message builder being prepared
+     */
+    default void messageBuilder(TypedMessageBuilder<byte[]> messageBuilder) {
+        // Default empty implementation
+    }
 
     /**
      * Intercept before sending message
@@ -76,26 +97,6 @@ public interface PulsarMessageInterceptor {
      * @param exception Send exception (if any)
      */
     default void afterSend(String topic, Object message, MessageId messageId, Throwable exception) {
-        // Default empty implementation
-    }
-
-    /**
-     * Intercept message builder before sending
-     *
-     * <p>This method is called during message preparation phase, allowing
-     * implementations to modify the message builder before the message
-     * is finalized and sent.
-     *
-     * <p>Typical use cases include:
-     * <ul>
-     *   <li>Adding custom message properties</li>
-     *   <li>Injecting tracing context headers</li>
-     *   <li>Setting message delivery semantics</li>
-     * </ul>
-     *
-     * @param messageBuilder the message builder being prepared
-     */
-    default void beforeHandleSendMessage(TypedMessageBuilder<byte[]> messageBuilder) {
         // Default empty implementation
     }
 

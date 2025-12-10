@@ -634,7 +634,7 @@ public final class PulsarTemplate {
 
         for (PulsarMessageInterceptor interceptor : interceptorRegistry.interceptors()) {
             try {
-                interceptor.beforeHandleSendMessage(messageBuilder);
+                interceptor.messageBuilder(messageBuilder);
             } catch (Exception e) {
                 // Interceptor exceptions should not affect message sending, just log them
                 logger.error("Error in beforeSend interceptor: " + e.getMessage(), e);

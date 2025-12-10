@@ -24,10 +24,16 @@
 
 package com.github.spring.mq.pulsar.interceptor;
 
+import com.github.spring.mq.pulsar.domain.MsgContext;
 import com.github.spring.mq.pulsar.domain.MsgMetaKey;
 import org.apache.pulsar.client.api.Message;
+import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 /**
  * Abstract base class for multi-tenant message interceptors
@@ -47,11 +53,31 @@ import org.slf4j.LoggerFactory;
  *   <li>{@link #buildReceiveContext(String)} - setup tenant context upon reception</li>
  * </ul>
  */
-public abstract class MetaMsgMultipleTenantInterceptor implements PulsarMessageInterceptor {
+public abstract class MetaMessageInterceptor implements PulsarMessageInterceptor {
+    private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
 
-    private final static Logger logger = LoggerFactory.getLogger(MetaMsgMultipleTenantInterceptor.class);
+    private final static Logger logger = LoggerFactory.getLogger(MetaMessageInterceptor.class);
 
-    protected MetaMsgMultipleTenantInterceptor() {
+    protected MetaMessageInterceptor() {
+    }
+
+    @Override
+    public void messageBuilder(TypedMessageBuilder<byte[]> messageBuilder) {
+
+        String corpKey = MsgContext.getCorpKey();
+        if (corpKey != null && !corpKey.isEmpty()) {
+            messageBuilder.property(MsgMetaKey.CORP.getCode(), corpKey);
+        }
+
+        String msgRoute = MsgContext.getMsgRoute();
+        if (msgRoute != null && !msgRoute.isEmpty()) {
+            messageBuilder.property(MsgMetaKey.MSG_ROUTE.getCode(), msgRoute);
+        }
+
+        LocalDateTime time = MsgContext.getTime();
+        if (time != null) {
+            messageBuilder.property(MsgMetaKey.TIME.getCode(), time.format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT)));
+        }
     }
 
     /**
@@ -87,7 +113,13 @@ public abstract class MetaMsgMultipleTenantInterceptor implements PulsarMessageI
      */
     @Override
     public boolean beforeReceive(Message<?> message) {
-        String corpKey = message.getProperties().get(MsgMetaKey.CORP.getCode());
+        Map<String, String> properties = message.getProperties();
+        String corpKey = properties.get(MsgMetaKey.CORP.getCode());
+        String time = properties.get(MsgMetaKey.TIME.getCode());
+
+        MsgContext.setCorpKey(corpKey);
+        MsgContext.setTime(LocalDateTime.parse(time, DateTimeFormatter.ofPattern(DATE_TIME_FORMAT)));
+
         return buildReceiveContext(corpKey);
     }
 

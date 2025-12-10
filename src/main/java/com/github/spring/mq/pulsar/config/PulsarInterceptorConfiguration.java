@@ -24,6 +24,8 @@
 
 package com.github.spring.mq.pulsar.config;
 
+import com.github.spring.mq.pulsar.interceptor.DefaultMetaMessageInterceptor;
+import com.github.spring.mq.pulsar.interceptor.MetaMessageInterceptor;
 import com.github.spring.mq.pulsar.interceptor.PulsarMessageInterceptor;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -75,5 +77,11 @@ public class PulsarInterceptorConfiguration {
             // Sort by priority order
             this.interceptors.sort(Comparator.comparingInt(PulsarMessageInterceptor::getOrder));
         }
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public MetaMessageInterceptor defaultMetaMessageInterceptor() {
+        return new DefaultMetaMessageInterceptor();
     }
 }

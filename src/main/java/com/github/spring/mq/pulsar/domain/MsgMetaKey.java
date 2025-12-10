@@ -41,19 +41,7 @@ public enum MsgMetaKey {
     MSG_ID("msgId"),
     MSG_ROUTE("msgRoute"),
 
-    TRACE_FLAG("X-Trace-Flag"),
-    TRACE("X-Trace-Id"),
-    SPAN("X-Span-Id"),
     TIME("time"),
-
-
-    /**
-     * Tracer
-     */
-    TRACER_TRACE_ID("tracer_trace_id"),
-    TRACER_PARENT_ID("tracer_parent_id"),
-    TRACER_SPAN_ID("tracer_span_id"),
-    TRACER_SAMPLED("tracer_sampled"),
     ;
 
     private final String code;

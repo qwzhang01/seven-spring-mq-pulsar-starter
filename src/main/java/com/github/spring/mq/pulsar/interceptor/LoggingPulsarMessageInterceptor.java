@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.exception.JacksonException;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
+import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +56,11 @@ public class LoggingPulsarMessageInterceptor implements PulsarMessageInterceptor
 
     public LoggingPulsarMessageInterceptor(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+    }
+
+    @Override
+    public void messageBuilder(TypedMessageBuilder<byte[]> messageBuilder) {
+        logger.info("Preparing to build message。");
     }
 
     @Override

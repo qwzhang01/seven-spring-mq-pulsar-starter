@@ -76,7 +76,7 @@ public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor
      * @param messageBuilder the Pulsar message builder being prepared
      */
     @Override
-    public void beforeHandleSendMessage(TypedMessageBuilder<byte[]> messageBuilder) {
+    public void messageBuilder(TypedMessageBuilder<byte[]> messageBuilder) {
         if (tracer == null) {
             return;
         }

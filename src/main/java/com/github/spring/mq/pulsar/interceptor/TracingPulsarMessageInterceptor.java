@@ -149,9 +149,6 @@ public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor
             logger.debug("Finished processing messageId: {}", message.getMessageId());
         } catch (Exception e) {
             logger.warn("Failed to end tracing span for message receive", e);
-        } finally {
-            // Clean up all trace context to prevent memory leaks and context pollution
-            MsgContext.remove();
         }
     }
 

@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.spring.mq.pulsar.config.PulsarInterceptorConfiguration;
 import com.github.spring.mq.pulsar.config.PulsarProperties;
 import com.github.spring.mq.pulsar.domain.ListenerType;
+import com.github.spring.mq.pulsar.domain.MsgContext;
 import com.github.spring.mq.pulsar.exception.JacksonException;
 import com.github.spring.mq.pulsar.exception.PulsarConsumeInitException;
 import com.github.spring.mq.pulsar.exception.PulsarConsumerNotExistException;
@@ -658,6 +659,8 @@ public final class PulsarTemplate {
                 logger.error("Error in afterSend interceptor: " + e.getMessage(), e);
             }
         }
+
+        MsgContext.remove();
     }
 
     /**
@@ -697,6 +700,8 @@ public final class PulsarTemplate {
                 logger.error("Error in afterReceive interceptor: {}", e.getMessage(), e);
             }
         }
+
+        MsgContext.remove();
     }
 
     /**
@@ -732,5 +737,4 @@ public final class PulsarTemplate {
         deadLetterListenerContainers.clear();
         logger.info("Pulsar dead letter consumer closed");
     }
-
 }

@@ -59,7 +59,7 @@ public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor
     /**
      * Constructs a new tracing interceptor with the provided tracer and propagator
      *
-     * @param tracer the Micrometer tracer instance for span management
+     * @param tracer     the Micrometer tracer instance for span management
      * @param propagator the propagator for context injection and extraction
      */
     public TracingPulsarMessageInterceptor(Tracer tracer, Propagator propagator) {
@@ -136,9 +136,9 @@ public class TracingPulsarMessageInterceptor implements PulsarMessageInterceptor
      *   <li>Logs completion of message processing</li>
      * </ul>
      *
-     * @param message the received Pulsar message
+     * @param message          the received Pulsar message
      * @param processedMessage the processed message object
-     * @param exception any exception that occurred during processing
+     * @param exception        any exception that occurred during processing
      */
     @Override
     public void afterReceive(Message<?> message, Object processedMessage, Exception exception) {

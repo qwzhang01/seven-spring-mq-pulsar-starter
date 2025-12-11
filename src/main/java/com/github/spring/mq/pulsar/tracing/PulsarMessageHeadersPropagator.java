@@ -81,10 +81,10 @@ public class PulsarMessageHeadersPropagator {
      * </ul>
      *
      * @param messageBuilder the Pulsar message builder to inject headers into
-     * @param corpKey       enterprise identifier
-     * @param appName       application name
-     * @param time          message timestamp
-     * @param msgId         unique message identifier
+     * @param corpKey        enterprise identifier
+     * @param appName        application name
+     * @param time           message timestamp
+     * @param msgId          unique message identifier
      */
     public static void injectCorp(TypedMessageBuilder<byte[]> messageBuilder, String corpKey, String appName, LocalDateTime time, String msgId) {
         if (messageBuilder == null) {

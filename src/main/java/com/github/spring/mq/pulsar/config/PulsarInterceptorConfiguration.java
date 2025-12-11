@@ -63,6 +63,12 @@ public class PulsarInterceptorConfiguration {
         return new PulsarInterceptorRegistry(interceptors);
     }
 
+    @Bean
+    @ConditionalOnMissingBean
+    public MetaMessageInterceptor defaultMetaMessageInterceptor() {
+        return new DefaultMetaMessageInterceptor();
+    }
+
     /**
      * Interceptor registry
      *
@@ -77,11 +83,5 @@ public class PulsarInterceptorConfiguration {
             // Sort by priority order
             this.interceptors.sort(Comparator.comparingInt(PulsarMessageInterceptor::getOrder));
         }
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public MetaMessageInterceptor defaultMetaMessageInterceptor() {
-        return new DefaultMetaMessageInterceptor();
     }
 }

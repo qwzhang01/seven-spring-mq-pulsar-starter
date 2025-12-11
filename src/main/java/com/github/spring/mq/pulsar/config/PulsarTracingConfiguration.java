@@ -65,7 +65,7 @@ public class PulsarTracingConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public TracingPulsarMessageInterceptor tracingPulsarMessageInterceptor(Tracer tracer, Propagator propagato) {
-        return new TracingPulsarMessageInterceptor(tracer,propagato);
+        return new TracingPulsarMessageInterceptor(tracer, propagato);
     }
 
     @Bean

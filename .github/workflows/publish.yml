@@ -27,8 +27,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          server-id: github
-          settings-path: ${{ github.workspace }}
 
       - name: Cache Maven dependencies
         uses: actions/cache@v4
@@ -38,17 +36,38 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Build package
-        run: mvn clean package -DskipTests -Dgpg.skip=true
-
-      - name: Publish to GitHub Packages
+      - name: Configure Maven settings for GitHub Packages
         run: |
-          mvn deploy -DskipTests \
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
+              </server>
+              <!-- Dummy server to prevent central-publishing-maven-plugin from failing -->
+              <server>
+                <id>avinzhang-opensource</id>
+                <username>dummy</username>
+                <password>dummy</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      - name: Build and publish to GitHub Packages
+        run: |
+          mvn clean deploy -DskipTests \
             -Dgpg.skip=true \
-            -Dcentral.publishing.skip=true \
-            -DaltDeploymentRepository=github::https://maven.pkg.github.com/qwzhang01/seven-spring-mq-pulsar-starter
+            -Dcentral.publishing.autoPublish=false \
+            -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/qwzhang01/seven-spring-mq-pulsar-starter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
 
   # Optional: Publish to Maven Central (requires secrets configuration)
   # To enable, uncomment this job and add the following secrets:

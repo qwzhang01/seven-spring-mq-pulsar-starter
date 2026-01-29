@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation / 文档
+    url: https://github.com/qwzhang01/seven-spring-mq-pulsar-starter#readme
+    about: Check out the README for usage guides and configuration details. / 查看 README 了解使用指南和配置详情。
+  - name: Apache Pulsar Documentation / Apache Pulsar 文档
+    url: https://pulsar.apache.org/docs/
+    about: Official Apache Pulsar documentation for reference. / 官方 Apache Pulsar 文档供参考。

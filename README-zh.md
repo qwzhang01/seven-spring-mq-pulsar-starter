@@ -1,5 +1,15 @@
 # Seven Spring MQ Pulsar Starter
 
+[![构建状态](https://github.com/qwzhang01/seven-spring-mq-pulsar-starter/actions/workflows/test.yml/badge.svg)](https://github.com/qwzhang01/seven-spring-mq-pulsar-starter/actions/workflows/test.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.qwzhang01/seven-spring-mq-pulsar-starter.svg)](https://central.sonatype.com/artifact/io.github.qwzhang01/seven-spring-mq-pulsar-starter)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Java Version](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://www.oracle.com/java/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.0%2B-green.svg)](https://spring.io/projects/spring-boot)
+[![Apache Pulsar](https://img.shields.io/badge/Apache%20Pulsar-3.2.4%2B-blue.svg)](https://pulsar.apache.org/)
+[![codecov](https://codecov.io/gh/qwzhang01/seven-spring-mq-pulsar-starter/branch/main/graph/badge.svg)](https://codecov.io/gh/qwzhang01/seven-spring-mq-pulsar-starter)
+
+[English](README.md)
+
 一个功能丰富、易于使用的 Spring Boot Pulsar Starter，提供完整的 Pulsar 集成解决方案。
 
 ## 特性
@@ -1271,7 +1281,13 @@ public void debugTransaction() {
 
 ## 贡献
 
-欢迎提交 Issues 和 Pull Requests 来改进这个项目。
+我们欢迎贡献！请查看我们的 [贡献指南](CONTRIBUTING.md) 了解详情。
+
+在贡献之前，请阅读我们的 [行为准则](CODE_OF_CONDUCT.md)。
+
+## 变更日志
+
+查看 [CHANGELOG.md](CHANGELOG.md) 了解变更列表和版本历史。
 
 ## 许可证
 

@@ -72,7 +72,7 @@ jobs:
             target/site/
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         if: matrix.java-version == '17'
         with:
           file: target/site/jacoco/jacoco.xml

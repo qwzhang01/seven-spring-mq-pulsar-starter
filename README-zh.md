@@ -24,6 +24,616 @@
 - 💊 **健康检查**: 内置 Pulsar 连接健康检查
 - 🎯 **事务支持**: 支持 Pulsar 事务消息
 - 🗺️ **多实例配置**: 支持配置多个生产者和消费者实例
+- 🛣️ **消息路由**: 增强按消息类型/业务类型做分支处理能力，发送时用 `msgRoute` 标记业务类型到元数据，消费消息时按照 `msgRoute` 反向找到真实的处理器
+- 🔐 **租户上下文**: 增强消息消费拦截器，支持在拦截器里面根据消息元信息，初始化租户信息等
+
+## 增强的消息路由能力
+
+### 基于业务类型的分支处理
+
+该starter提供了增强的消息路由能力，允许您：
+
+1. **在元数据中标记业务类型**：发送消息时使用 `msgRoute` 标记业务类型
+2. **根据业务类型路由到适当的处理器**：消费消息时根据业务类型找到对应的处理器
+3. **支持多个消息处理器**：为不同的业务场景提供不同的处理器
+
+### 消息路由配置
+
+```yaml
+spring:
+  pulsar:
+    consumer:
+      # 用于路由的业务类型字段名
+      business-key: businessPath
+      
+      # 消息路由配置
+      msg-route: order.process
+```
+
+### 使用示例
+
+#### 发送带路由信息的消息
+
+```java
+@Service
+public class OrderService {
+    
+    @Autowired
+    private PulsarTemplate pulsarTemplate;
+    
+    public void sendOrderEvent(OrderEvent event) {
+        // 发送前设置消息路由
+        MsgContext.setMsgRoute("order.created");
+        
+        // 发送消息 - 路由信息会自动包含在元数据中
+        pulsarTemplate.send("order-events", event);
+        
+        // 清理上下文
+        MsgContext.remove();
+    }
+}
+```
+
+#### 接收消息并基于路由处理
+
+```java
+@Component
+public class OrderEventListener {
+    
+    // 处理订单创建事件
+    @PulsarListener(
+        topic = "order-events",
+        subscription = "order-processor",
+        msgRoute = "order.created"
+    )
+    public void handleOrderCreated(OrderEvent event) {
+        // 处理订单创建逻辑
+        orderService.processNewOrder(event);
+    }
+    
+    // 处理订单取消事件
+    @PulsarListener(
+        topic = "order-events", 
+        subscription = "order-processor",
+        msgRoute = "order.cancelled"
+    )
+    public void handleOrderCancelled(OrderEvent event) {
+        // 处理订单取消逻辑
+        orderService.processCancelledOrder(event);
+    }
+}
+```
+
+## 增强的消息消费拦截器
+
+### 租户信息初始化
+
+该starter提供了强大的消息消费拦截器，支持：
+
+1. **基于消息元数据的自动租户上下文传播**
+2. **在拦截器中自定义租户切换逻辑**
+3. **多租户场景的线程本地上下文管理**
+
+### 拦截器实现
+
+#### 自定义租户拦截器
+
+```java
+@Component
+public class TenantContextInterceptor extends MetaMessageInterceptor {
+    
+    @Autowired
+    private TenantService tenantService;
+    
+    @Override
+    public void buildSendContext() {
+        // 提取当前租户上下文并设置用于消息发送
+        String currentTenant = TenantContext.getCurrentTenant();
+        if (currentTenant != null) {
+            MsgContext.setCorpKey(currentTenant);
+        }
+    }
+    
+    @Override
+    public boolean buildReceiveContext(String corpKey) {
+        // 基于消息元数据切换租户上下文
+        if (corpKey != null && !corpKey.isEmpty()) {
+            return tenantService.switchTenant(corpKey);
+        }
+        return true;
+    }
+    
+    @Override
+    public int getOrder() {
+        return 1; // 租户上下文设置的高优先级
+    }
+}
+```
+
+#### 审计日志拦截器
+
+```java
+@Component
+public class AuditLoggingInterceptor implements PulsarMessageInterceptor {
+    
+    private static final Logger logger = LoggerFactory.getLogger(AuditLoggingInterceptor.class);
+    
+    @Override
+    public Object beforeSend(String topic, Object message) {
+        logger.info("发送消息到主题: {}, 租户: {}, 消息: {}", 
+            topic, MsgContext.getCorpKey(), message);
+        return message;
+    }
+    
+    @Override
+    public void afterSend(String topic, Object message, MessageId messageId, Exception exception) {
+        if (exception != null) {
+            logger.error("发送消息到主题失败: {}, 租户: {}", 
+                topic, MsgContext.getCorpKey(), exception);
+        } else {
+            logger.info("成功发送消息到主题: {}, 消息ID: {}", 
+                topic, messageId);
+        }
+    }
+    
+    @Override
+    public boolean beforeReceive(Message<?> message) {
+        String tenantId = message.getProperties().get(MsgMetaKey.CORP.getCode());
+        logger.info("从主题接收消息: {}, 租户: {}, 消息ID: {}", 
+            message.getTopicName(), tenantId, message.getMessageId());
+        return true;
+    }
+    
+    @Override
+    public int getOrder() {
+        return 2; // 比租户拦截器优先级低
+    }
+}
+```
+
+### 拦截器配置
+
+```yaml
+spring:
+  pulsar:
+    interceptor:
+      # 启用消息拦截器
+      enabled: true
+      
+      # 自定义拦截器（由Spring自动检测）
+      custom-interceptors:
+        - com.example.TenantContextInterceptor
+        - com.example.AuditLoggingInterceptor
+```
+
+## 高级消息路由场景
+
+### 多路由消息处理
+
+```java
+@Component
+public class MultiRouteMessageProcessor {
+    
+    // 处理多个业务路由的消息
+    @PulsarListener(
+        topic = "business-events",
+        subscription = "multi-route-processor",
+        multiRoute = true
+    )
+    public void handleMultiRouteMessage(Message<BusinessEvent> message) {
+        
+        // 从消息属性中提取路由
+        String msgRoute = message.getProperties().get(MsgMetaKey.MSG_ROUTE.getCode());
+        
+        // 根据业务类型路由到适当的处理器
+        switch (msgRoute) {
+            case "user.registration":
+                handleUserRegistration(message.getValue());
+                break;
+            case "order.payment":
+                handleOrderPayment(message.getValue());
+                break;
+            case "inventory.update":
+                handleInventoryUpdate(message.getValue());
+                break;
+            default:
+                logger.warn("未知消息路由: {}", msgRoute);
+        }
+    }
+    
+    private void handleUserRegistration(UserRegistrationEvent event) {
+        // 用户注册逻辑
+    }
+    
+    private void handleOrderPayment(OrderPaymentEvent event) {
+        // 订单支付逻辑
+    }
+    
+    private void handleInventoryUpdate(InventoryUpdateEvent event) {
+        // 库存更新逻辑
+    }
+}
+```
+
+### 动态路由配置
+
+```java
+@Service
+public class DynamicRouteService {
+    
+    @Autowired
+    private PulsarTemplate pulsarTemplate;
+    
+    public void sendWithDynamicRoute(String businessType, Object message) {
+        // 根据业务类型设置动态路由
+        String route = determineRoute(businessType);
+        MsgContext.setMsgRoute(route);
+        
+        // 发送消息
+        pulsarTemplate.send("dynamic-events", message);
+        
+        MsgContext.remove();
+    }
+    
+    private String determineRoute(String businessType) {
+        // 动态路由确定逻辑
+        switch (businessType) {
+            case "HIGH_PRIORITY": return "priority.process";
+            case "NORMAL": return "normal.process";
+            case "BATCH": return "batch.process";
+            default: return "default.process";
+        }
+    }
+}
+```
+
+## 实际应用场景
+
+### 多租户电商平台
+
+```java
+@Component
+public class EcommerceMessageHandler {
+    
+    @Autowired
+    private TenantService tenantService;
+    
+    // 处理带租户上下文的订单创建
+    @PulsarListener(
+        topic = "ecommerce.orders",
+        subscription = "order-processor",
+        msgRoute = "order.created"
+    )
+    public void handleOrderCreation(OrderEvent order) {
+        // 租户上下文由拦截器自动设置
+        String tenantId = MsgContext.getCorpKey();
+        
+        // 使用租户特定逻辑处理订单
+        orderService.processOrder(order, tenantId);
+        
+        // 向客户发送通知
+        Notification notification = createOrderNotification(order);
+        sendNotification(notification);
+    }
+    
+    // 处理带租户路由的支付事件
+    @PulsarListener(
+        topic = "ecommerce.payments",
+        subscription = "payment-processor",
+        msgRoute = "payment.success"
+    )
+    public void handlePaymentSuccess(PaymentEvent payment) {
+        String tenantId = MsgContext.getCorpKey();
+        
+        // 更新订单状态
+        orderService.updateOrderStatus(payment.getOrderId(), "PAID", tenantId);
+        
+        // 触发履约流程
+        fulfillmentService.startFulfillment(payment.getOrderId(), tenantId);
+    }
+    
+    private void sendNotification(Notification notification) {
+        // 为通知设置租户上下文
+        MsgContext.setCorpKey(MsgContext.getCorpKey());
+        MsgContext.setMsgRoute("notification.send");
+        
+        pulsarTemplate.send("notifications", notification);
+        
+        MsgContext.remove();
+    }
+}
+```
+
+### 基于路由的微服务通信
+
+```java
+@Component
+public class MicroserviceMessageRouter {
+    
+    // 基于业务类型在微服务之间路由消息
+    @PulsarListener(
+        topic = "microservice.events",
+        subscription = "event-router",
+        multiRoute = true
+    )
+    public void routeMicroserviceEvents(Message<ServiceEvent> message) {
+        String msgRoute = message.getProperties().get(MsgMetaKey.MSG_ROUTE.getCode());
+        String tenantId = message.getProperties().get(MsgMetaKey.CORP.getCode());
+        
+        // 为处理设置租户上下文
+        MsgContext.setCorpKey(tenantId);
+        
+        try {
+            // 路由到适当的微服务处理器
+            switch (msgRoute) {
+                case "user.service.create":
+                    userService.createUser(message.getValue());
+                    break;
+                case "product.service.update":
+                    productService.updateProduct(message.getValue());
+                    break;
+                case "inventory.service.reserve":
+                    inventoryService.reserveInventory(message.getValue());
+                    break;
+                default:
+                    logger.warn("未处理的消息路由: {}", msgRoute);
+            }
+        } finally {
+            MsgContext.remove();
+        }
+    }
+}
+```
+
+## 消息路由和拦截器的最佳实践
+
+### 1. 一致的路由命名约定
+
+使用分层命名约定来命名消息路由：
+
+```java
+// 良好的路由命名
+MsgContext.setMsgRoute("order.payment.success");
+MsgContext.setMsgRoute("user.registration.completed");
+MsgContext.setMsgRoute("inventory.stock.updated");
+
+// 避免模糊命名
+MsgContext.setMsgRoute("payment"); // 太模糊
+MsgContext.setMsgRoute("user_registration_completed"); // 格式不一致
+```
+
+### 2. 租户上下文管理
+
+```java
+@Component
+public class TenantAwareInterceptor extends MetaMessageInterceptor {
+    
+    @Override
+    public void buildSendContext() {
+        // 有可用时始终包含租户上下文
+        String currentTenant = TenantContext.getCurrentTenant();
+        if (currentTenant != null) {
+            MsgContext.setCorpKey(currentTenant);
+        }
+    }
+    
+    @Override
+    public boolean buildReceiveContext(String corpKey) {
+        // 处理前验证租户
+        if (corpKey == null || corpKey.isEmpty()) {
+            logger.warn("消息中缺少租户上下文");
+            return false; // 拒绝没有租户上下文的消息
+        }
+        
+        // 切换到适当的租户
+        return tenantService.switchTenant(corpKey);
+    }
+}
+```
+
+### 3. 拦截器中的错误处理
+
+```java
+@Component
+public class ErrorHandlingInterceptor implements PulsarMessageInterceptor {
+    
+    @Override
+    public Object beforeSend(String topic, Object message) {
+        try {
+            // 发送前验证消息
+            validateMessage(message);
+            return message;
+        } catch (ValidationException e) {
+            logger.error("主题的消息验证失败: {}", topic, e);
+            throw e; // 防止发送无效消息
+        }
+    }
+    
+    @Override
+    public boolean beforeReceive(Message<?> message) {
+        try {
+            // 验证消息完整性
+            validateMessageIntegrity(message);
+            return true;
+        } catch (CorruptedMessageException e) {
+            logger.error("消息完整性检查失败", e);
+            return false; // 跳过处理损坏的消息
+        }
+    }
+    
+    private void validateMessage(Object message) {
+        // 自定义验证逻辑
+        if (message == null) {
+            throw new ValidationException("消息不能为空");
+        }
+    }
+}
+```
+
+### 4. 性能监控拦截器
+
+```java
+@Component
+public class PerformanceInterceptor implements PulsarMessageInterceptor {
+    
+    private final ThreadLocal<Long> startTime = new ThreadLocal<>();
+    private final MeterRegistry meterRegistry;
+    
+    public PerformanceInterceptor(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
+    
+    @Override
+    public Object beforeSend(String topic, Object message) {
+        startTime.set(System.currentTimeMillis());
+        return message;
+    }
+    
+    @Override
+    public void afterSend(String topic, Object message, MessageId messageId, Exception exception) {
+        Long start = startTime.get();
+        if (start != null) {
+            long duration = System.currentTimeMillis() - start;
+            
+            // 记录指标
+            meterRegistry.timer("pulsar.send.duration", "topic", topic)
+                .record(duration, TimeUnit.MILLISECONDS);
+            
+            if (exception != null) {
+                meterRegistry.counter("pulsar.send.errors", "topic", topic).increment();
+            }
+            
+            startTime.remove();
+        }
+    }
+    
+    @Override
+    public boolean beforeReceive(Message<?> message) {
+        startTime.set(System.currentTimeMillis());
+        return true;
+    }
+    
+    @Override
+    public void afterReceive(Message<?> message, Object processedMessage, Exception exception) {
+        Long start = startTime.get();
+        if (start != null) {
+            long duration = System.currentTimeMillis() - start;
+            
+            // 记录处理指标
+            meterRegistry.timer("pulsar.process.duration", 
+                "topic", message.getTopicName())
+                .record(duration, TimeUnit.MILLISECONDS);
+            
+            if (exception != null) {
+                meterRegistry.counter("pulsar.process.errors", 
+                    "topic", message.getTopicName()).increment();
+            }
+            
+            startTime.remove();
+        }
+    }
+}
+```
+
+## 配置参考
+
+### 完整的消息路由配置
+
+```yaml
+spring:
+  pulsar:
+    # 消息路由配置
+    routing:
+      enabled: true
+      
+      # 默认路由键字段名
+      route-key: msgRoute
+      
+      # 租户上下文键字段名
+      tenant-key: corpKey
+      
+      # 启用多路由支持
+      multi-route: true
+    
+    # 拦截器配置
+    interceptor:
+      enabled: true
+      
+      # 自定义拦截器（由Spring自动检测）
+      custom-interceptors:
+        - com.example.TenantContextInterceptor
+        - com.example.AuditLoggingInterceptor
+        - com.example.PerformanceInterceptor
+      
+      # 拦截器执行顺序
+      order:
+        tenant-context: 1
+        audit-logging: 2
+        performance: 3
+```
+
+### 带路由的高级生产者配置
+
+```yaml
+spring:
+  pulsar:
+    producer-map:
+      # 带路由支持的订单生产者
+      order-producer:
+        topic: persistent://public/default/order-events
+        send-timeout: 30s
+        batching-enabled: true
+        
+        # 路由配置
+        route-key: orderType
+        tenant-key: tenantId
+      
+      # 通知生产者
+      notification-producer:
+        topic: persistent://public/default/notifications
+        send-timeout: 15s
+        batching-enabled: false
+        
+        # 路由配置
+        route-key: notificationType
+        tenant-key: corpKey
+```
+
+### 带路由的高级消费者配置
+
+```yaml
+spring:
+  pulsar:
+    consumer-map:
+      # 多路由消费者
+      multi-route-consumer:
+        topic: persistent://public/default/business-events
+        subscription-name: multi-route-subscription
+        subscription-type: Shared
+        
+        # 路由配置
+        route-key: businessPath
+        tenant-key: corpKey
+        multi-route: true
+        
+        # 处理配置
+        receiver-queue-size: 1000
+        ack-timeout: 60s
+        retry-time: 3
+      
+      # 租户特定消费者
+      tenant-consumer:
+        topic: persistent://public/default/tenant-events
+        subscription-name: tenant-subscription
+        subscription-type: Exclusive
+        
+        # 路由配置
+        route-key: eventType
+        tenant-key: tenantId
+        
+        # 租户特定处理
+        tenant-aware: true
+```
 
 ## 快速开始
 
@@ -1292,3 +1902,90 @@ public void debugTransaction() {
 ## 许可证
 
 本项目采用 [MIT 许可证](LICENSE)。
+
+## 增强功能总结
+
+### 消息路由能力
+
+增强的消息路由功能提供：
+
+- **业务类型分类**：使用 `msgRoute` 对消息按业务类型进行分类
+- **动态处理器路由**：根据业务类型自动将消息路由到适当的处理器
+- **多路由支持**：单个监听器可以通过 `multiRoute=true` 处理多个业务路由
+- **上下文传播**：路由信息通过消息元数据自动传播
+
+### 消息拦截器增强
+
+增强的拦截器系统支持：
+
+- **租户上下文管理**：基于消息元数据的自动租户切换
+- **自定义拦截器链**：灵活的拦截器排序和执行
+- **性能监控**：内置消息处理指标收集
+- **错误处理**：优雅的错误处理和恢复机制
+
+### 主要优势
+
+1. **简化的多租户架构**：自动租户上下文传播减少样板代码
+2. **灵活的消息处理**：基于路由的处理支持复杂的业务逻辑场景
+3. **增强的可观测性**：全面的监控和日志记录能力
+4. **生产就绪**：强大的错误处理和恢复机制
+
+## 功能对比
+
+| 功能 | 基础 Pulsar | 增强版 Starter |
+|------|------------|----------------|
+| 消息路由 | 手动实现 | 自动基于路由的路由 |
+| 租户上下文 | 手动上下文管理 | 自动租户切换 |
+| 拦截器支持 | 有限 | 全面的拦截器链 |
+| 多路由处理 | 不支持 | 内置多路由支持 |
+| 性能监控 | 手动实现 | 内置指标收集 |
+| 错误处理 | 基础重试机制 | 带死信队列的高级错误处理 |
+
+## 使用增强功能入门
+
+### 1. 启用增强路由
+
+```yaml
+spring:
+  pulsar:
+    routing:
+      enabled: true
+    interceptor:
+      enabled: true
+```
+
+### 2. 实现自定义拦截器
+
+```java
+@Component
+public class MyCustomInterceptor extends MetaMessageInterceptor {
+    // 您的自定义拦截器逻辑
+}
+```
+
+### 3. 配置基于路由的监听器
+
+```java
+@PulsarListener(
+    topic = "my-topic",
+    msgRoute = "my.business.route",
+    multiRoute = true
+)
+public void handleMessage(MyMessage message) {
+    // 基于路由的消息处理
+}
+```
+
+## 支持和社区
+
+- **问题反馈**：[GitHub Issues](https://github.com/qwzhang01/seven-spring-mq-pulsar-starter/issues)
+- **文档**：[GitHub Wiki](https://github.com/qwzhang01/seven-spring-mq-pulsar-starter/wiki)
+- **贡献指南**：请阅读我们的[贡献指南](CONTRIBUTING.md)
+
+## 许可证
+
+本项目采用 MIT 许可证 - 详情请参阅 [LICENSE](LICENSE) 文件。
+
+---
+
+**注意**：此starter正在积极维护中，欢迎社区贡献。如有任何问题或建议，请在GitHub上提交issue。

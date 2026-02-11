@@ -12,12 +12,98 @@
 
 A feature-rich, easy-to-use Spring Boot Pulsar Starter that provides a complete Pulsar integration solution.
 
+## Summary of Enhanced Features
+
+### Message Routing Capability
+
+The enhanced message routing feature provides:
+
+- **Business Type Classification**: Messages can be categorized by business types using `msgRoute`
+- **Dynamic Handler Routing**: Messages are automatically routed to appropriate handlers based on their business type
+- **Multi-Route Support**: Single listener can handle multiple business routes with `multiRoute=true`
+- **Context Propagation**: Route information is automatically propagated through message metadata
+
+### Message Interceptor Enhancement
+
+The enhanced interceptor system supports:
+
+- **Tenant Context Management**: Automatic tenant switching based on message metadata
+- **Custom Interceptor Chains**: Flexible interceptor ordering and execution
+- **Performance Monitoring**: Built-in metrics collection for message processing
+- **Error Handling**: Graceful error handling and recovery mechanisms
+
+### Key Benefits
+
+1. **Simplified Multi-Tenant Architecture**: Automatic tenant context propagation reduces boilerplate code
+2. **Flexible Message Processing**: Route-based processing enables complex business logic scenarios
+3. **Enhanced Observability**: Comprehensive monitoring and logging capabilities
+4. **Production-Ready**: Robust error handling and recovery mechanisms
+
+## Feature Comparison
+
+| Feature | Basic Pulsar | Enhanced Starter |
+|---------|-------------|------------------|
+| Message Routing | Manual implementation | Automatic route-based routing |
+| Tenant Context | Manual context management | Automatic tenant switching |
+| Interceptor Support | Limited | Comprehensive interceptor chain |
+| Multi-Route Processing | Not supported | Built-in multi-route support |
+| Performance Monitoring | Manual implementation | Built-in metrics collection |
+| Error Handling | Basic retry mechanisms | Advanced error handling with DLQ |
+
+## Getting Started with Enhanced Features
+
+### 1. Enable Enhanced Routing
+
+```yaml
+spring:
+  pulsar:
+    routing:
+      enabled: true
+    interceptor:
+      enabled: true
+```
+
+### 2. Implement Custom Interceptors
+
+```java
+@Component
+public class MyCustomInterceptor extends MetaMessageInterceptor {
+    // Your custom interceptor logic
+}
+```
+
+### 3. Configure Route-Based Listeners
+
+```java
+@PulsarListener(
+    topic = "my-topic",
+    msgRoute = "my.business.route",
+    multiRoute = true
+)
+public void handleMessage(MyMessage message) {
+    // Route-based message processing
+}
+```
+
+## Support and Community
+
+- **Issues**: [GitHub Issues](https://github.com/qwzhang01/seven-spring-mq-pulsar-starter/issues)
+- **Documentation**: [GitHub Wiki](https://github.com/qwzhang01/seven-spring-mq-pulsar-starter/wiki)
+- **Contributing**: Please read our [Contributing Guide](CONTRIBUTING.md)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Note**: This starter is actively maintained and welcomes contributions from the community. For any questions or suggestions, please open an issue on GitHub.
+
 ## Features
 
 - 🚀 **Easy to Use**: Enable Pulsar functionality with a single `@EnablePulsar` annotation
 - 🔧 **Flexible Configuration**: Support flexible control of various functions through configuration files
-- 📨 **Message Sending**: Provide synchronous/asynchronous message sending, support delayed messages and transactional
-  messages
+- 📨 **Message Sending**: Provide synchronous/asynchronous message sending, support delayed messages and transactional messages
 - 👂 **Message Listening**: Easily create message listeners through `@PulsarListener` annotation
 - 🔄 **Retry Mechanism**: Built-in message processing failure retry mechanism with exponential backoff support
 - 💀 **Dead Letter Queue**: Automatically handle retry-failed messages to dead letter queue
@@ -25,6 +111,616 @@ A feature-rich, easy-to-use Spring Boot Pulsar Starter that provides a complete 
 - 💊 **Health Check**: Built-in Pulsar connection health check
 - 🎯 **Transaction Support**: Support Pulsar transactional messages
 - 🗺️ **Multi-Instance Configuration**: Support configuring multiple producer and consumer instances
+- 🛣️ **Message Routing**: Enhanced branch processing capability by message type/business type, using `msgRoute` to mark business types in metadata
+- 🔐 **Tenant Context**: Enhanced message consumption interceptors supporting tenant information initialization based on message metadata
+
+## Practical Application Scenarios
+
+### Multi-Tenant E-commerce Platform
+
+```java
+@Component
+public class EcommerceMessageHandler {
+    
+    @Autowired
+    private TenantService tenantService;
+    
+    // Handle order creation with tenant context
+    @PulsarListener(
+        topic = "ecommerce.orders",
+        subscription = "order-processor",
+        msgRoute = "order.created"
+    )
+    public void handleOrderCreation(OrderEvent order) {
+        // Tenant context is automatically set by interceptor
+        String tenantId = MsgContext.getCorpKey();
+        
+        // Process order with tenant-specific logic
+        orderService.processOrder(order, tenantId);
+        
+        // Send notification to customer
+        Notification notification = createOrderNotification(order);
+        sendNotification(notification);
+    }
+    
+    // Handle payment events with tenant routing
+    @PulsarListener(
+        topic = "ecommerce.payments",
+        subscription = "payment-processor",
+        msgRoute = "payment.success"
+    )
+    public void handlePaymentSuccess(PaymentEvent payment) {
+        String tenantId = MsgContext.getCorpKey();
+        
+        // Update order status
+        orderService.updateOrderStatus(payment.getOrderId(), "PAID", tenantId);
+        
+        // Trigger fulfillment process
+        fulfillmentService.startFulfillment(payment.getOrderId(), tenantId);
+    }
+    
+    private void sendNotification(Notification notification) {
+        // Set tenant context for notification
+        MsgContext.setCorpKey(MsgContext.getCorpKey());
+        MsgContext.setMsgRoute("notification.send");
+        
+        pulsarTemplate.send("notifications", notification);
+        
+        MsgContext.remove();
+    }
+}
+```
+
+### Microservices Communication with Route-Based Processing
+
+```java
+@Component
+public class MicroserviceMessageRouter {
+    
+    // Route messages between microservices based on business type
+    @PulsarListener(
+        topic = "microservice.events",
+        subscription = "event-router",
+        multiRoute = true
+    )
+    public void routeMicroserviceEvents(Message<ServiceEvent> message) {
+        String msgRoute = message.getProperties().get(MsgMetaKey.MSG_ROUTE.getCode());
+        String tenantId = message.getProperties().get(MsgMetaKey.CORP.getCode());
+        
+        // Set tenant context for processing
+        MsgContext.setCorpKey(tenantId);
+        
+        try {
+            // Route to appropriate microservice handler
+            switch (msgRoute) {
+                case "user.service.create":
+                    userService.createUser(message.getValue());
+                    break;
+                case "product.service.update":
+                    productService.updateProduct(message.getValue());
+                    break;
+                case "inventory.service.reserve":
+                    inventoryService.reserveInventory(message.getValue());
+                    break;
+                default:
+                    logger.warn("Unhandled message route: {}", msgRoute);
+            }
+        } finally {
+            MsgContext.remove();
+        }
+    }
+}
+```
+
+## Best Practices for Message Routing and Interceptors
+
+### 1. Consistent Route Naming Convention
+
+Use a hierarchical naming convention for message routes:
+
+```java
+// Good route naming
+MsgContext.setMsgRoute("order.payment.success");
+MsgContext.setMsgRoute("user.registration.completed");
+MsgContext.setMsgRoute("inventory.stock.updated");
+
+// Avoid ambiguous naming
+MsgContext.setMsgRoute("payment"); // Too vague
+MsgContext.setMsgRoute("user_registration_completed"); // Inconsistent format
+```
+
+### 2. Tenant Context Management
+
+```java
+@Component
+public class TenantAwareInterceptor extends MetaMessageInterceptor {
+    
+    @Override
+    public void buildSendContext() {
+        // Always include tenant context when available
+        String currentTenant = TenantContext.getCurrentTenant();
+        if (currentTenant != null) {
+            MsgContext.setCorpKey(currentTenant);
+        }
+    }
+    
+    @Override
+    public boolean buildReceiveContext(String corpKey) {
+        // Validate tenant before processing
+        if (corpKey == null || corpKey.isEmpty()) {
+            logger.warn("Missing tenant context in message");
+            return false; // Reject messages without tenant context
+        }
+        
+        // Switch to appropriate tenant
+        return tenantService.switchTenant(corpKey);
+    }
+}
+```
+
+### 3. Error Handling in Interceptors
+
+```java
+@Component
+public class ErrorHandlingInterceptor implements PulsarMessageInterceptor {
+    
+    @Override
+    public Object beforeSend(String topic, Object message) {
+        try {
+            // Validate message before sending
+            validateMessage(message);
+            return message;
+        } catch (ValidationException e) {
+            logger.error("Message validation failed for topic: {}", topic, e);
+            throw e; // Prevent invalid messages from being sent
+        }
+    }
+    
+    @Override
+    public boolean beforeReceive(Message<?> message) {
+        try {
+            // Validate message integrity
+            validateMessageIntegrity(message);
+            return true;
+        } catch (CorruptedMessageException e) {
+            logger.error("Message integrity check failed", e);
+            return false; // Skip processing corrupted messages
+        }
+    }
+    
+    private void validateMessage(Object message) {
+        // Custom validation logic
+        if (message == null) {
+            throw new ValidationException("Message cannot be null");
+        }
+    }
+}
+```
+
+### 4. Performance Monitoring Interceptor
+
+```java
+@Component
+public class PerformanceInterceptor implements PulsarMessageInterceptor {
+    
+    private final ThreadLocal<Long> startTime = new ThreadLocal<>();
+    private final MeterRegistry meterRegistry;
+    
+    public PerformanceInterceptor(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
+    
+    @Override
+    public Object beforeSend(String topic, Object message) {
+        startTime.set(System.currentTimeMillis());
+        return message;
+    }
+    
+    @Override
+    public void afterSend(String topic, Object message, MessageId messageId, Exception exception) {
+        Long start = startTime.get();
+        if (start != null) {
+            long duration = System.currentTimeMillis() - start;
+            
+            // Record metrics
+            meterRegistry.timer("pulsar.send.duration", "topic", topic)
+                .record(duration, TimeUnit.MILLISECONDS);
+            
+            if (exception != null) {
+                meterRegistry.counter("pulsar.send.errors", "topic", topic).increment();
+            }
+            
+            startTime.remove();
+        }
+    }
+    
+    @Override
+    public boolean beforeReceive(Message<?> message) {
+        startTime.set(System.currentTimeMillis());
+        return true;
+    }
+    
+    @Override
+    public void afterReceive(Message<?> message, Object processedMessage, Exception exception) {
+        Long start = startTime.get();
+        if (start != null) {
+            long duration = System.currentTimeMillis() - start;
+            
+            // Record processing metrics
+            meterRegistry.timer("pulsar.process.duration", 
+                "topic", message.getTopicName())
+                .record(duration, TimeUnit.MILLISECONDS);
+            
+            if (exception != null) {
+                meterRegistry.counter("pulsar.process.errors", 
+                    "topic", message.getTopicName()).increment();
+            }
+            
+            startTime.remove();
+        }
+    }
+}
+```
+
+## Configuration Reference
+
+### Complete Message Routing Configuration
+
+```yaml
+spring:
+  pulsar:
+    # Message routing configuration
+    routing:
+      enabled: true
+      
+      # Default route key field name
+      route-key: msgRoute
+      
+      # Tenant context key field name
+      tenant-key: corpKey
+      
+      # Enable multi-route support
+      multi-route: true
+    
+    # Interceptor configuration
+    interceptor:
+      enabled: true
+      
+      # Custom interceptors (auto-detected by Spring)
+      custom-interceptors:
+        - com.example.TenantContextInterceptor
+        - com.example.AuditLoggingInterceptor
+        - com.example.PerformanceInterceptor
+      
+      # Interceptor execution order
+      order:
+        tenant-context: 1
+        audit-logging: 2
+        performance: 3
+```
+
+### Advanced Producer Configuration with Routing
+
+```yaml
+spring:
+  pulsar:
+    producer-map:
+      # Order producer with routing support
+      order-producer:
+        topic: persistent://public/default/order-events
+        send-timeout: 30s
+        batching-enabled: true
+        
+        # Route configuration
+        route-key: orderType
+        tenant-key: tenantId
+      
+      # Notification producer
+      notification-producer:
+        topic: persistent://public/default/notifications
+        send-timeout: 15s
+        batching-enabled: false
+        
+        # Route configuration
+        route-key: notificationType
+        tenant-key: corpKey
+```
+
+### Advanced Consumer Configuration with Route-Based Processing
+
+```yaml
+spring:
+  pulsar:
+    consumer-map:
+      # Multi-route consumer
+      multi-route-consumer:
+        topic: persistent://public/default/business-events
+        subscription-name: multi-route-subscription
+        subscription-type: Shared
+        
+        # Route configuration
+        route-key: businessPath
+        tenant-key: corpKey
+        multi-route: true
+        
+        # Processing configuration
+        receiver-queue-size: 1000
+        ack-timeout: 60s
+        retry-time: 3
+      
+      # Tenant-specific consumer
+      tenant-consumer:
+        topic: persistent://public/default/tenant-events
+        subscription-name: tenant-subscription
+        subscription-type: Exclusive
+        
+        # Route configuration
+        route-key: eventType
+        tenant-key: tenantId
+        
+        # Tenant-specific processing
+        tenant-aware: true
+```
+
+## Enhanced Message Routing Capability
+
+### Business Type-Based Branch Processing
+
+The starter provides enhanced message routing capabilities that allow you to:
+
+1. **Mark business types in metadata** during message sending using `msgRoute`
+2. **Route messages to appropriate handlers** based on business types during consumption
+3. **Support multiple message processors** for different business scenarios
+
+### Message Routing Configuration
+
+```yaml
+spring:
+  pulsar:
+    consumer:
+      # Business type field name for routing
+      business-key: businessPath
+      
+      # Message routing configuration
+      msg-route: order.process
+```
+
+### Usage Examples
+
+#### Sending Messages with Route Information
+
+```java
+@Service
+public class OrderService {
+    
+    @Autowired
+    private PulsarTemplate pulsarTemplate;
+    
+    public void sendOrderEvent(OrderEvent event) {
+        // Set message route before sending
+        MsgContext.setMsgRoute("order.created");
+        
+        // Send message - route info will be automatically included in metadata
+        pulsarTemplate.send("order-events", event);
+        
+        // Clean up context
+        MsgContext.remove();
+    }
+}
+```
+
+#### Receiving Messages with Route-Based Processing
+
+```java
+@Component
+public class OrderEventListener {
+    
+    // Handle order creation events
+    @PulsarListener(
+        topic = "order-events",
+        subscription = "order-processor",
+        msgRoute = "order.created"
+    )
+    public void handleOrderCreated(OrderEvent event) {
+        // Process order creation logic
+        orderService.processNewOrder(event);
+    }
+    
+    // Handle order cancellation events
+    @PulsarListener(
+        topic = "order-events", 
+        subscription = "order-processor",
+        msgRoute = "order.cancelled"
+    )
+    public void handleOrderCancelled(OrderEvent event) {
+        // Process order cancellation logic
+        orderService.processCancelledOrder(event);
+    }
+}
+```
+
+## Enhanced Message Consumption Interceptors
+
+### Tenant Information Initialization
+
+The starter provides powerful message consumption interceptors that support:
+
+1. **Automatic tenant context propagation** based on message metadata
+2. **Custom tenant switching logic** in interceptors
+3. **Thread-local context management** for multi-tenant scenarios
+
+### Interceptor Implementation
+
+#### Custom Tenant Interceptor
+
+```java
+@Component
+public class TenantContextInterceptor extends MetaMessageInterceptor {
+    
+    @Autowired
+    private TenantService tenantService;
+    
+    @Override
+    public void buildSendContext() {
+        // Extract current tenant context and set it for message sending
+        String currentTenant = TenantContext.getCurrentTenant();
+        if (currentTenant != null) {
+            MsgContext.setCorpKey(currentTenant);
+        }
+    }
+    
+    @Override
+    public boolean buildReceiveContext(String corpKey) {
+        // Switch tenant context based on message metadata
+        if (corpKey != null && !corpKey.isEmpty()) {
+            return tenantService.switchTenant(corpKey);
+        }
+        return true;
+    }
+    
+    @Override
+    public int getOrder() {
+        return 1; // High priority for tenant context setup
+    }
+}
+```
+
+#### Audit Logging Interceptor
+
+```java
+@Component
+public class AuditLoggingInterceptor implements PulsarMessageInterceptor {
+    
+    private static final Logger logger = LoggerFactory.getLogger(AuditLoggingInterceptor.class);
+    
+    @Override
+    public Object beforeSend(String topic, Object message) {
+        logger.info("Sending message to topic: {}, tenant: {}, message: {}", 
+            topic, MsgContext.getCorpKey(), message);
+        return message;
+    }
+    
+    @Override
+    public void afterSend(String topic, Object message, MessageId messageId, Exception exception) {
+        if (exception != null) {
+            logger.error("Failed to send message to topic: {}, tenant: {}", 
+                topic, MsgContext.getCorpKey(), exception);
+        } else {
+            logger.info("Successfully sent message to topic: {}, message ID: {}", 
+                topic, messageId);
+        }
+    }
+    
+    @Override
+    public boolean beforeReceive(Message<?> message) {
+        String tenantId = message.getProperties().get(MsgMetaKey.CORP.getCode());
+        logger.info("Receiving message from topic: {}, tenant: {}, message ID: {}", 
+            message.getTopicName(), tenantId, message.getMessageId());
+        return true;
+    }
+    
+    @Override
+    public int getOrder() {
+        return 2; // Lower priority than tenant interceptor
+    }
+}
+```
+
+### Interceptor Configuration
+
+```yaml
+spring:
+  pulsar:
+    interceptor:
+      # Enable message interceptors
+      enabled: true
+      
+      # Custom interceptors (auto-detected by Spring)
+      custom-interceptors:
+        - com.example.TenantContextInterceptor
+        - com.example.AuditLoggingInterceptor
+```
+
+## Advanced Message Routing Scenarios
+
+### Multi-Route Message Processing
+
+```java
+@Component
+public class MultiRouteMessageProcessor {
+    
+    // Process messages for multiple business routes
+    @PulsarListener(
+        topic = "business-events",
+        subscription = "multi-route-processor",
+        multiRoute = true
+    )
+    public void handleMultiRouteMessage(Message<BusinessEvent> message) {
+        
+        // Extract route from message properties
+        String msgRoute = message.getProperties().get(MsgMetaKey.MSG_ROUTE.getCode());
+        
+        // Route to appropriate handler based on business type
+        switch (msgRoute) {
+            case "user.registration":
+                handleUserRegistration(message.getValue());
+                break;
+            case "order.payment":
+                handleOrderPayment(message.getValue());
+                break;
+            case "inventory.update":
+                handleInventoryUpdate(message.getValue());
+                break;
+            default:
+                logger.warn("Unknown message route: {}", msgRoute);
+        }
+    }
+    
+    private void handleUserRegistration(UserRegistrationEvent event) {
+        // User registration logic
+    }
+    
+    private void handleOrderPayment(OrderPaymentEvent event) {
+        // Order payment logic
+    }
+    
+    private void handleInventoryUpdate(InventoryUpdateEvent event) {
+        // Inventory update logic
+    }
+}
+```
+
+### Dynamic Route Configuration
+
+```java
+@Service
+public class DynamicRouteService {
+    
+    @Autowired
+    private PulsarTemplate pulsarTemplate;
+    
+    public void sendWithDynamicRoute(String businessType, Object message) {
+        // Set dynamic route based on business type
+        String route = determineRoute(businessType);
+        MsgContext.setMsgRoute(route);
+        
+        // Send message
+        pulsarTemplate.send("dynamic-events", message);
+        
+        MsgContext.remove();
+    }
+    
+    private String determineRoute(String businessType) {
+        // Dynamic route determination logic
+        switch (businessType) {
+            case "HIGH_PRIORITY": return "priority.process";
+            case "NORMAL": return "normal.process";
+            case "BATCH": return "batch.process";
+            default: return "default.process";
+        }
+    }
+}
+```
 
 ## Quick Start
 
